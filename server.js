@@ -144,9 +144,38 @@ app.get('*', (req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
     console.error('Error:', err);
+    
+    // Handle specific errors
+    if (err.name === 'MongoError' || err.name === 'MongooseError') {
+        return res.status(500).json({
+            status: 'error',
+            message: 'Database error occurred',
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+    }
+    
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Validation failed',
+            details: err.message
+        });
+    }
+    
+    // Default error response
     res.status(500).json({
         status: 'error',
-        message: err.message || 'Internal server error'
+        message: err.message || 'Internal server error',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Add this to handle 404s
+app.use((req, res) => {
+    res.status(404).json({
+        status: 'error',
+        message: 'Not Found',
+        path: req.path
     });
 });
 
