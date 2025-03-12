@@ -212,6 +212,12 @@
     </style>
 </head>
 <body>
+    <div id="debug-info" style="position: fixed; bottom: 10px; right: 10px; background: #f8f9fa; padding: 10px; border: 1px solid #ddd; z-index: 1000; max-width: 300px; font-size: 12px; display: none;">
+        <h4>Debug Info</h4>
+        <pre id="debug-content"></pre>
+        <button onclick="document.getElementById('debug-info').style.display='none'">Close</button>
+    </div>
+    
     <nav>
         <div class="nav-container">
             <div class="logo">
@@ -303,8 +309,25 @@
     </div>
     
     <script>
+        function showDebugInfo() {
+            const debugContent = document.getElementById('debug-content');
+            const debugInfo = document.getElementById('debug-info');
+            
+            const userString = localStorage.getItem('user');
+            debugContent.textContent = `localStorage 'user': ${userString || 'not found'}`;
+            
+            debugInfo.style.display = 'block';
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showDebugInfo();
+            }
+        });
+        
         document.addEventListener('DOMContentLoaded', function() {
             const userString = localStorage.getItem('user');
+            console.log('Raw localStorage user data:', userString);
             
             if (!userString) {
                 // Redirect to login if no user data found
