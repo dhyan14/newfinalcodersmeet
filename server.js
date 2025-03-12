@@ -13,9 +13,24 @@ const SquadChat = require('./models/SquadChat');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: true, // Allow all origins in development
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Add OPTIONS handler for preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 app.use(express.static('public'));
+
+// Add after your middleware setup
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+});
 
 // MongoDB Connection with detailed logging
 let isConnected = false;
@@ -47,15 +62,22 @@ const connectToDatabase = async () => {
 // Status route with detailed response
 app.get('/api/status', async (req, res) => {
     try {
+        console.log('Status check requested');
         await connectToDatabase();
-        res.json({ 
+        
+        const status = {
             status: 'ok',
-            database: 'connected',
-            timestamp: new Date().toISOString()
-        });
+            database: isConnected ? 'connected' : 'disconnected',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV,
+            mongodbUri: process.env.MONGODB_URI ? 'configured' : 'missing'
+        };
+        
+        console.log('Status response:', status);
+        res.json(status);
     } catch (error) {
         console.error('Status check failed:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             status: 'error',
             error: error.message,
             details: 'Database connection failed',
@@ -123,14 +145,19 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Error handler
+// Add error handling middleware
 app.use((err, req, res, next) => {
-    console.error('Global error:', err);
-    res.status(500).json({ 
-        error: 'Something broke!',
-        message: err.message,
+    console.error('Error:', err);
+    res.status(500).json({
+        status: 'error',
+        message: err.message || 'Internal server error',
         timestamp: new Date().toISOString()
     });
+});
+
+// Add this near your other routes
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Export the app
