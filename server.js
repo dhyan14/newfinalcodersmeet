@@ -61,11 +61,7 @@ const connectToDatabase = async () => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        server: true,
-        timestamp: new Date().toISOString()
-    });
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Status endpoint
@@ -128,6 +124,34 @@ app.post('/api/signup', async (req, res) => {
     } catch (error) {
         console.error('Signup error:', error);
         res.status(500).json({ error: 'Signup failed', details: error.message });
+    }
+});
+
+// Add this to your server.js file - Username availability check endpoint
+app.post('/api/check-username', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { username } = req.body;
+        
+        if (!username || username.length < 3) {
+            return res.status(400).json({ 
+                error: 'Username must be at least 3 characters long' 
+            });
+        }
+        
+        // Check if username exists
+        const existingUser = await User.findOne({ username });
+        
+        res.json({
+            available: !existingUser,
+            username
+        });
+    } catch (error) {
+        console.error('Username check error:', error);
+        res.status(500).json({ 
+            error: 'Failed to check username availability',
+            details: error.message 
+        });
     }
 });
 
