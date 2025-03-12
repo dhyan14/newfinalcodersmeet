@@ -218,8 +218,7 @@
                 Coders <span>MEET</span>
             </div>
             <div class="links">
-                <div class="link"><a href="#" id="notificationsLink"><i class="fas fa-bell"></i></a></div>
-                <div class="link"><a href="#" id="messagesLink"><i class="fas fa-envelope"></i></a></div>
+                <div class="link"><a href="index.html">Home</a></div>
                 <div class="link"><a href="#" id="logoutLink">Logout</a></div>
             </div>
             <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
@@ -229,7 +228,9 @@
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="user-profile">
-                <div class="user-avatar" id="userAvatar"></div>
+                <div class="user-avatar" id="userAvatar">
+                    <!-- User initials will be inserted here by JavaScript -->
+                </div>
                 <div class="user-name" id="userName">Loading...</div>
                 <div class="user-username" id="userUsername">@loading...</div>
             </div>
@@ -322,17 +323,20 @@
                 const welcomeNameElement = document.getElementById('welcomeName');
                 const userAvatarElement = document.getElementById('userAvatar');
                 
-                if (user.fullName) {
+                if (userNameElement && user.fullName) {
                     userNameElement.textContent = user.fullName;
+                }
+                
+                if (welcomeNameElement && user.fullName) {
                     welcomeNameElement.textContent = user.fullName.split(' ')[0]; // First name only
                 }
                 
-                if (user.username) {
+                if (userUsernameElement && user.username) {
                     userUsernameElement.textContent = '@' + user.username;
                 }
                 
                 // Set avatar with initials
-                if (user.fullName) {
+                if (userAvatarElement && user.fullName) {
                     const initials = user.fullName
                         .split(' ')
                         .map(name => name[0])
@@ -350,11 +354,14 @@
         });
         
         // Logout functionality
-        document.getElementById('logoutLink').addEventListener('click', function(e) {
-            e.preventDefault();
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-        });
+        const logoutLink = document.getElementById('logoutLink');
+        if (logoutLink) {
+            logoutLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                localStorage.removeItem('user');
+                window.location.href = 'login.html';
+            });
+        }
         
         function hamburg() {
             document.querySelector('.dropdown').style.display = 'block';
