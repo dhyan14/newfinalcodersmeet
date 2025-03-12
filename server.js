@@ -27,6 +27,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Configure Mongoose
 mongoose.set('strictQuery', false);
@@ -90,7 +91,12 @@ connectDB();
 
 // Basic test route
 app.get('/', (req, res) => {
-    res.json({ message: 'Server is running' });
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Add a general route handler for all HTML files
+app.get('/*.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
 // Basic Routes
@@ -1177,6 +1183,11 @@ io.on('connection', (socket) => {
         }
         socket.leave(data.roomId);
     });
+});
+
+// Move your catch-all route to the end of all routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 module.exports = app; 
