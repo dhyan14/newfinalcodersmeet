@@ -12,14 +12,15 @@ const SquadChat = require('./models/SquadChat');
 
 const app = express();
 
-// CORS configuration
+// Update CORS configuration
 const corsOptions = {
-    origin: '*', // Allow all origins
+    origin: process.env.NODE_ENV === 'production' 
+        ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app']
+        : ['http://localhost:5000', 'http://localhost:3000'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    preflightContinue: false,
+    credentials: true,
     optionsSuccessStatus: 204,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 // Apply CORS middleware
@@ -30,9 +31,9 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.static('public'));
 
-// Request logger
+// Add better error logging
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
     next();
 });
 
