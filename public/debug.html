@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug User Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow: auto;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug User Data</h1>
+    
+    <div class="card">
+        <h2>Current User Data</h2>
+        <pre id="user-data">Loading...</pre>
+    </div>
+    
+    <div class="card">
+        <h2>Fix User Data</h2>
+        <button id="fix-data">Fix User Data Structure</button>
+        <button id="clear-data">Clear User Data</button>
+    </div>
+    
+    <div class="card">
+        <h2>Navigation</h2>
+        <button onclick="window.location.href='login.html'">Go to Login</button>
+        <button onclick="window.location.href='dashboard.html'">Go to Dashboard</button>
+    </div>
+    
+    <script>
+        // Display current user data
+        function updateDisplay() {
+            const userDataEl = document.getElementById('user-data');
+            const userString = localStorage.getItem('user');
+            
+            if (userString) {
+                try {
+                    const userData = JSON.parse(userString);
+                    userDataEl.textContent = JSON.stringify(userData, null, 2);
+                } catch (e) {
+                    userDataEl.textContent = `Error parsing: ${userString}\n\nError: ${e.message}`;
+                }
+            } else {
+                userDataEl.textContent = 'No user data in localStorage';
+            }
+        }
+        
+        // Fix user data structure
+        document.getElementById('fix-data').addEventListener('click', function() {
+            const userString = localStorage.getItem('user');
+            
+            if (userString) {
+                try {
+                    const userData = JSON.parse(userString);
+                    
+                    // Ensure the data has the correct structure
+                    const fixedData = {
+                        _id: userData._id || userData.id || "test123",
+                        fullName: userData.fullName || userData.name || "Test User",
+                        username: userData.username || "testuser",
+                        email: userData.email || "test@example.com"
+                    };
+                    
+                    localStorage.setItem('user', JSON.stringify(fixedData));
+                    updateDisplay();
+                    alert('User data structure fixed!');
+                } catch (e) {
+                    alert(`Error fixing user data: ${e.message}`);
+                }
+            } else {
+                alert('No user data to fix');
+            }
+        });
+        
+        // Clear user data
+        document.getElementById('clear-data').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            updateDisplay();
+            alert('User data cleared!');
+        });
+        
+        // Initial display
+        updateDisplay();
+    </script>
+</body>
+</html> 
