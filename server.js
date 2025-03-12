@@ -19,13 +19,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Middleware
-app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? process.env.FRONTEND_URL 
-        : 'http://localhost:5000',
-    methods: ['GET', 'POST'],
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -44,30 +38,40 @@ const io = socketIo(server, {
 const connectedUsers = new Map();
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => {
-    console.log('MongoDB Connected');
-    // Start server only after DB connection
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-    });
-})
-.catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-});
+let cachedDb = null;
+
+async function connectToDatabase() {
+    if (cachedDb) {
+        return cachedDb;
+    }
+    
+    try {
+        const client = await mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
+        
+        cachedDb = client;
+        console.log('MongoDB Connected');
+        return client;
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        throw error;
+    }
+}
 
 // Routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/api/status', (req, res) => {
-    res.json({ status: 'ok' });
+app.get('/api/status', async (req, res) => {
+    try {
+        await connectToDatabase();
+        res.json({ status: 'ok' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
 });
 
 // API routes here...
@@ -75,6 +79,11 @@ app.get('/api/status', (req, res) => {
 // Catch-all route for client-side routing
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Add a general route handler for all HTML files
+app.get('/*.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
 module.exports = app; 
