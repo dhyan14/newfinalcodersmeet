@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hack a Match | CodersMEET</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .hack-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 20px auto;
+            padding: 0 20px;
+            min-height: calc(100vh - 120px);
+        }
+
+        .sidebar, .main-content, .community-sidebar {
+            background: var(--card-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Tab Navigation */
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+            color: var(--text-color);
+        }
+
+        .nav-tab.active {
+            border-bottom: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Challenge Cards */
+        .challenge-card {
+            background: var(--bg-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid var(--border-color);
+        }
+
+        .challenge-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .challenge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .challenge-difficulty {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .easy { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+        .medium { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+        .hard { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+
+        /* Chat Container */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .message.sent {
+            background: var(--primary-color);
+            color: white;
+            align-self: flex-end;
+        }
+
+        .message.received {
+            background: var(--border-color);
+            color: var(--text-color);
+            align-self: flex-start;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+        }
+
+        .chat-input button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        /* User Items */
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background 0.3s;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .user-item:hover {
+            background: rgba(7, 123, 50, 0.1);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .online { color: #28a745; }
+
+        /* Stats Card */
+        .stats-card {
+            margin-bottom: 20px;
+        }
+
+        .stats-chart {
+            height: 200px;
+            margin-bottom: 15px;
+            background: rgba(7, 123, 50, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stats-summary {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stats-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .hack-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+        }
+
+        /* Add these styles to your existing <style> section */
+        .refresh-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-left: auto;
+            transition: transform 0.3s;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(30deg);
+        }
+
+        .location-status {
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(7, 123, 50, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        .location-status.loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .location-status.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .range-header {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 15px 0 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .empty-state, .error-message {
+            padding: 20px;
+            text-align: center;
+            color: var(--secondary-text);
+        }
+
+        .retry-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .enable-location-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+
+        .enable-location-btn:hover {
+            background: var(--secondary-color);
+        }
+
+        .location-info {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        /* Add these styles to your hack-a-match.html */
+        .badge {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        .friend-requests-list {
+            margin-bottom: 30px;
+        }
+
+        .friend-request-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.3s;
+        }
+
+        .friend-request-item:hover {
+            background: rgba(7, 123, 50, 0.05);
+        }
+
+        .request-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .request-info {
+            flex: 1;
+        }
+
+        .request-name {
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .request-time {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .accept-btn, .reject-btn {
+            padding: 6px 12px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .accept-btn {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .accept-btn:hover {
+            background: var(--secondary-color);
+        }
+
+        .reject-btn {
+            background: #f8f9fa;
+            color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+
+        .reject-btn:hover {
+            background: #dc3545;
+            color: white;
+        }
+
+        .empty-requests {
+            padding: 20px;
+            text-align: center;
+            color: var(--secondary-text);
+        }
+
+        /* Add these styles to fix the dashboard stats layout */
+        .dashboard-stats {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0 25px;
+            text-align: center;
+        }
+
+        .stat-item {
+            flex: 1;
+            padding: 10px 5px;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .stat-item:last-child {
+            border-right: none;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .highlight {
+            background-color: #077b32;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(7, 123, 50, 0.7);
+            transform: scale(1.05);
+        }
+
+        .dashboard-button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                Coders <span>MEET</span>
+            </div>
+            <div class="links">
+                <div class="link"><a href="dashboard.html">Dashboard</a></div>
+                <div class="link"><a href="#" class="active">Hack a Match</a></div>
+                <div class="link"><a href="#" onclick="logout()">Logout</a></div>
+            </div>
+            <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
+        </div>
+        <div class="dropdown">
+            <div class="links">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="#" class="active">Hack a Match</a>
+                <a href="#" onclick="logout()">Logout</a>
+                <i class="fa-solid fa-xmark cancel" onclick="cancel()"></i>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hack-container">
+        <!-- Left Sidebar - User Stats -->
+        <div class="sidebar">
+            <div class="section-title">
+                <i class="fas fa-chart-line"></i> Your Progress
+            </div>
+            <div class="stats-card">
+                <div class="stats-chart">
+                    <i class="fas fa-chart-bar fa-3x" style="color: var(--primary-color);"></i>
+                </div>
+            </div>
+            <div class="dashboard-stats">
+                <div class="stat-item">
+                    <div class="stat-value">250</div>
+                    <div class="stat-label">Points</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">Challenges</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">Rank</div>
+                </div>
+            </div>
+            
+            <!-- Friend Requests section (replacing Nearby Coders) -->
+            <div class="section-title">
+                <i class="fas fa-user-plus"></i> Friend Requests
+                <span class="badge" id="requestCount">0</span>
+            </div>
+            <div id="friendRequestsContainer" class="friend-requests-list">
+                <div class="loading-message">Loading requests...</div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div class="nav-tabs">
+                <div class="nav-tab active" data-tab="challenges">Challenges</div>
+                <div class="nav-tab" data-tab="upload">Upload Solution</div>
+                <div style="margin-left: auto;">
+                    <button id="yourSquadBtn" class="dashboard-button highlight">Your Squad</button>
+                </div>
+            </div>
+
+            <!-- Challenges Tab -->
+            <div class="tab-content active" id="challenges-tab">
+                <div class="challenge-card">
+                    <div class="challenge-header">
+                        <div class="challenge-title">Build a Responsive Portfolio Website</div>
+                        <div class="challenge-difficulty easy">Easy</div>
+                    </div>
+                    <div class="challenge-description">
+                        Create a responsive portfolio website using HTML, CSS, and JavaScript. The website should include a home page, about section, skills section, and contact form.
+                    </div>
+                    <div class="challenge-footer">
+                        <div class="challenge-points">
+                            <i class="fas fa-star"></i> 50 points
+                        </div>
+                        <div class="challenge-deadline">
+                            <i class="fas fa-clock"></i> 7 days left
+                        </div>
+                    </div>
+                </div>
+
+                <div class="challenge-card">
+                    <div class="challenge-header">
+                        <div class="challenge-title">Weather App with API Integration</div>
+                        <div class="challenge-difficulty medium">Medium</div>
+                    </div>
+                    <div class="challenge-description">
+                        Build a weather application that fetches data from a weather API. The app should display current weather conditions, forecast, and allow users to search for different locations.
+                    </div>
+                    <div class="challenge-footer">
+                        <div class="challenge-points">
+                            <i class="fas fa-star"></i> 100 points
+                        </div>
+                        <div class="challenge-deadline">
+                            <i class="fas fa-clock"></i> 14 days left
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Solution Tab -->
+            <div class="tab-content" id="upload-tab">
+                <form class="upload-form" id="solutionUploadForm">
+                    <div class="form-group">
+                        <label for="challengeSelect">Select Challenge</label>
+                        <select id="challengeSelect" required>
+                            <option value="">-- Select a challenge --</option>
+                            <option value="1">Build a Responsive Portfolio Website</option>
+                            <option value="2">Weather App with API Integration</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="solutionTitle">Solution Title</label>
+                        <input type="text" id="solutionTitle" placeholder="Enter a title for your solution" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="solutionDescription">Description</label>
+                        <textarea id="solutionDescription" placeholder="Describe your approach..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="solutionRepo">GitHub Repository URL</label>
+                        <input type="url" id="solutionRepo" placeholder="https://github.com/yourusername/repository">
+                    </div>
+                    <div class="form-group">
+                        <label for="solutionFile">Upload Files (ZIP, max 10MB)</label>
+                        <input type="file" id="solutionFile" accept=".zip,.rar,.7zip">
+                    </div>
+                    <button type="submit" class="btn primary-btn">Submit Solution</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Community Members -->
+        <div class="community-sidebar">
+            <div class="section-title">
+                <i class="fas fa-location-dot"></i> Nearby Coders
+            </div>
+            <div class="location-status" id="locationStatus">
+                <button id="enableLocationBtn" class="enable-location-btn">
+                    <i class="fas fa-map-marker-alt"></i> Enable Location
+                </button>
+                <p class="location-info">Enable location to find nearby coders</p>
+            </div>
+            <div id="communityMembersList">
+                <div class="empty-state">Enable location to find nearby coders</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Replace the existing DOMContentLoaded event listener section with this updated version
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = localStorage.getItem('user');
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Move the location button event listener outside of DOMContentLoaded
+            const enableLocationBtn = document.getElementById('enableLocationBtn');
+            if (enableLocationBtn) {
+                enableLocationBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Location button clicked'); // Debug log
+                    loadNearbyUsers();
+                });
+            }
+
+            // Rest of your DOMContentLoaded code...
+        });
+
+        // Update the beginning of loadNearbyUsers function
+            async function loadNearbyUsers() {
+            console.log('loadNearbyUsers called'); // Debug log
+            const locationStatus = document.getElementById('locationStatus');
+            const membersList = document.getElementById('communityMembersList');
+            
+                try {
+                // Get current user
+                    const userString = localStorage.getItem('user');
+                    if (!userString) {
+                        throw new Error('User not logged in');
+                    }
+                    const currentUser = JSON.parse(userString);
+                    
+                // Update UI to loading state
+                locationStatus.innerHTML = `
+                    <div class="location-status loading">
+                        <i class="fas fa-spinner"></i> 
+                        Requesting location access...
+                    </div>
+                `;
+
+                // Check if geolocation is supported
+                if (!navigator.geolocation) {
+                    throw new Error('Geolocation is not supported by your browser');
+                }
+
+                // Explicitly request location with a simpler call first
+                navigator.geolocation.getCurrentPosition(
+                    async function(position) {
+                        try {
+                            console.log('Location permission granted'); // Debug log
+                    const { latitude, longitude } = position.coords;
+                            
+                            // Update location status
+                            locationStatus.innerHTML = `
+                                <div class="location-status loading">
+                                    <i class="fas fa-spinner"></i> 
+                                    Location found! Searching for nearby coders...
+                                </div>
+                            `;
+
+                            // Update user's location on server
+                            const locationUpdate = await fetch('http://localhost:5000/api/users/location-by-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: currentUser.email,
+                            latitude,
+                            longitude
+                        })
+                    });
+                    
+                            if (!locationUpdate.ok) {
+                                throw new Error('Failed to update location');
+                            }
+                            
+                            // Fetch nearby users
+                    const response = await fetch(
+                        `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
+                    );
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch nearby users');
+                    }
+                    
+                    const results = await response.json();
+                    
+                            // Update UI with results
+                    if (!results.length || !results.some(range => range.users.length > 0)) {
+                                membersList.innerHTML = `
+                                    <div class="empty-state">
+                                        <i class="fas fa-user-friends"></i>
+                                        <p>No nearby coders found yet.</p>
+                                        <p>Try expanding your search range or check back later!</p>
+                                    </div>
+                                `;
+                        return;
+                    }
+                    
+                            // Display results by range
+                    let usersHTML = '';
+                    results.forEach(range => {
+                        if (range.users.length > 0) {
+                            usersHTML += `<div class="range-header">${range.range}km Range</div>`;
+                            usersHTML += range.users.map(user => {
+                                const initials = user.fullName
+                                    .split(' ')
+                                    .map(name => name[0])
+                                    .join('')
+                                    .toUpperCase();
+                                
+                                return `
+                                <div class="user-item" data-user-id="${user._id}">
+                                    <div class="user-avatar">${initials}</div>
+                                    <div class="user-info">
+                                        <div class="user-name">${user.fullName}</div>
+                                                    <div class="user-status">${user.distance.toFixed(1)}km away</div>
+                                    </div>
+                                    <div class="user-actions">
+                                                    <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('');
+                        }
+                    });
+                    
+                    membersList.innerHTML = usersHTML;
+                            
+                            // Update status to success
+                            locationStatus.innerHTML = `
+                                <div>
+                                    <i class="fas fa-check-circle"></i> 
+                                    Location enabled - showing nearby coders
+                                    <button onclick="loadNearbyUsers()" class="refresh-btn">
+                                        <i class="fas fa-sync-alt"></i>
+                            </button>
+                                </div>
+                            `;
+                            
+                        } catch (error) {
+                            console.error('Error processing location:', error);
+                            handleLocationError(error);
+                        }
+                    },
+                    function(error) {
+                        console.error('Geolocation error:', error); // Debug log
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                handleLocationError(new Error('Location permission denied'));
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                handleLocationError(new Error('Location information unavailable'));
+                                break;
+                            case error.TIMEOUT:
+                                handleLocationError(new Error('Location request timed out'));
+                                break;
+                            default:
+                                handleLocationError(new Error('An unknown error occurred'));
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+
+            } catch (error) {
+                console.error('Error in loadNearbyUsers:', error); // Debug log
+                handleLocationError(error);
+            }
+        }
+
+        // Add this helper function to handle location errors
+        function handleLocationError(error) {
+            const locationStatus = document.getElementById('locationStatus');
+            const membersList = document.getElementById('communityMembersList');
+            
+            console.error('Location error:', error.message); // Debug log
+            
+            let errorMessage = '';
+            let actionButton = '';
+            
+            switch(error.message) {
+                case 'Location permission denied':
+                    errorMessage = `
+                        <p>Please enable location access in your browser settings to find nearby coders.</p>
+                        <p style="font-size: 0.8em; margin-top: 10px;">
+                            How to enable: Click the lock/info icon in your browser's address bar and allow location access.
+                        </p>
+                    `;
+                    actionButton = `
+                        <button onclick="showLocationInstructions()" class="enable-location-btn">
+                            <i class="fas fa-info-circle"></i> Show Instructions
+                        </button>
+                    `;
+                    break;
+                case 'Location information unavailable':
+                    errorMessage = 'Unable to detect your location. Please check your device settings.';
+                    break;
+                case 'Location request timed out':
+                    errorMessage = 'Location request took too long. Please try again.';
+                    break;
+                case 'Geolocation is not supported by your browser':
+                    errorMessage = 'Your browser doesn\'t support location services. Please try a different browser.';
+                    break;
+                default:
+                    errorMessage = 'An error occurred while finding nearby coders.';
+            }
+            
+            locationStatus.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${errorMessage}
+                </div>
+                ${actionButton || `
+                    <button onclick="loadNearbyUsers()" class="enable-location-btn">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                `}
+            `;
+            
+            membersList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Unable to load nearby coders</p>
+                    <p>Please check your location settings and try again</p>
+                </div>
+            `;
+        }
+
+        // Mobile menu functions
+        function hamburg() {
+            document.querySelector('.dropdown').style.display = 'block';
+        }
+        
+        function cancel() {
+            document.querySelector('.dropdown').style.display = 'none';
+        }
+
+        // Load friend requests
+        async function loadFriendRequests() {
+            try {
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    return;
+                }
+                
+                const currentUser = JSON.parse(userString);
+                if (!currentUser.email) {
+                    return;
+                }
+                
+                const response = await fetch(`http://localhost:5000/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load friend requests');
+                }
+                
+                const requests = await response.json();
+                const container = document.getElementById('friendRequestsContainer');
+                const requestCount = document.getElementById('requestCount');
+                
+                // Update the badge count
+                requestCount.textContent = requests.length;
+                
+                if (requests.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-requests">
+                            <p>No pending friend requests</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Display the requests
+                container.innerHTML = requests.map(request => {
+                    // Create initials from sender's name
+                    const initials = request.sender.fullName
+                        .split(' ')
+                        .map(name => name[0])
+                        .join('')
+                        .toUpperCase();
+                    
+                    return `
+                        <div class="friend-request-item" data-request-id="${request._id}">
+                            <div class="request-avatar">${initials}</div>
+                            <div class="request-info">
+                                <div class="request-name">${request.sender.fullName}</div>
+                                <div class="request-time">${request.timeAgo}</div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="accept-btn" onclick="respondToRequest('${request._id}', 'accept')">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="reject-btn" onclick="respondToRequest('${request._id}', 'reject')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error loading friend requests:', error);
+                document.getElementById('friendRequestsContainer').innerHTML = `
+                    <div class="error-message">
+                        Failed to load friend requests: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Handle accept/reject actions
+        async function respondToRequest(requestId, action) {
+            try {
+                const response = await fetch('http://localhost:5000/api/friend-request-response', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requestId,
+                        action
+                    })
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to process request');
+                }
+                
+                // Remove the request from the UI
+                const requestElement = document.querySelector(`.friend-request-item[data-request-id="${requestId}"]`);
+                if (requestElement) {
+                    requestElement.style.height = requestElement.offsetHeight + 'px';
+                    requestElement.style.overflow = 'hidden';
+                    requestElement.style.opacity = '0';
+                    requestElement.style.transition = 'all 0.3s ease';
+                    
+                    setTimeout(() => {
+                        requestElement.style.height = '0';
+                        setTimeout(() => {
+                            requestElement.remove();
+                            
+                            // Update the count
+                            const requestCount = document.getElementById('requestCount');
+                            const currentCount = parseInt(requestCount.textContent);
+                            requestCount.textContent = currentCount - 1;
+                            
+                            // Check if there are no more requests
+                            if (currentCount - 1 === 0) {
+                                document.getElementById('friendRequestsContainer').innerHTML = `
+                                    <div class="empty-requests">
+                                        <p>No pending friend requests</p>
+                                    </div>
+                                `;
+                            }
+                        }, 300);
+                    }, 10);
+                }
+                
+            } catch (error) {
+                console.error(`Error ${action}ing friend request:`, error);
+                alert(error.message);
+            }
+        }
+
+        document.getElementById('yourSquadBtn').addEventListener('click', function() {
+            // Navigate to the squad page
+            window.location.href = 'squad.html';
+        });
+
+        // Add this helper function to show location instructions
+        function showLocationInstructions() {
+            const browser = detectBrowser();
+            let instructions = '';
+            
+            switch(browser) {
+                case 'Chrome':
+                    instructions = `
+                        <ol>
+                            <li>Click the lock/info icon in the address bar</li>
+                            <li>Click on "Site settings"</li>
+                            <li>Find "Location" and change it to "Allow"</li>
+                            <li>Refresh the page and try again</li>
+                        </ol>
+                    `;
+                    break;
+                case 'Firefox':
+                    instructions = `
+                        <ol>
+                            <li>Click the lock/info icon in the address bar</li>
+                            <li>Click on "Clear settings"</li>
+                            <li>Refresh the page and allow location access</li>
+                        </ol>
+                    `;
+                    break;
+                default:
+                    instructions = `
+                        <ol>
+                            <li>Check your browser's location settings</li>
+                            <li>Make sure location access is enabled</li>
+                            <li>Refresh the page and try again</li>
+                        </ol>
+                    `;
+            }
+            
+            const locationStatus = document.getElementById('locationStatus');
+            locationStatus.innerHTML = `
+                <div class="error-message">
+                    <h4>How to Enable Location Access</h4>
+                    ${instructions}
+                </div>
+                <button onclick="loadNearbyUsers()" class="enable-location-btn">
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            `;
+        }
+
+        // Helper function to detect browser
+        function detectBrowser() {
+            if ((navigator.userAgent.indexOf("Opera") || navigator.userAgent.indexOf('OPR')) != -1) {
+                return 'Opera';
+            } else if (navigator.userAgent.indexOf("Chrome") != -1) {
+                return 'Chrome';
+            } else if (navigator.userAgent.indexOf("Safari") != -1) {
+                return 'Safari';
+            } else if (navigator.userAgent.indexOf("Firefox") != -1) {
+                return 'Firefox';
+            } else if ((navigator.userAgent.indexOf("MSIE") != -1) || (!!document.documentMode == true)) {
+                return 'IE';
+            } else {
+                return 'Unknown';
+            }
+        }
+    </script>
+</body>
+</html> 
