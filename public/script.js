@@ -224,59 +224,88 @@ const API_CONFIG = {
     }
 };
 
-// API helper function
+// API helper function with better error handling
 async function fetchAPI(endpoint, options = {}) {
     try {
         const url = `${API_CONFIG.baseURL}${endpoint}`;
+        console.log(`Making request to: ${url}`);
+
         const response = await fetch(url, {
             ...options,
             headers: {
                 ...API_CONFIG.headers,
                 ...options.headers
-            }
+            },
+            credentials: 'same-origin' // Add this for cookies if needed
         });
 
-        const data = await response.json();
+        // Handle non-JSON responses
+        const contentType = response.headers.get('content-type');
+        const data = contentType && contentType.includes('application/json') 
+            ? await response.json()
+            : await response.text();
 
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'API request failed');
+            throw new Error(
+                typeof data === 'object' 
+                    ? data.error || data.message || 'API request failed'
+                    : data || 'API request failed'
+            );
         }
 
         return data;
     } catch (error) {
+        if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+            console.error(`Network error for ${endpoint}:`, error);
+            throw new Error('Unable to connect to server. Please check your internet connection.');
+        }
         console.error(`API Error (${endpoint}):`, error);
         throw error;
     }
 }
 
-// Server connection check
-async function checkServerConnection() {
-    try {
-        console.log('Checking server connection...');
-        const data = await fetchAPI('/api/status');
-        console.log('Server status:', data);
-        return data.status === 'ok';
-    } catch (error) {
-        console.error('Server connection failed:', error);
-        return false;
+// Server connection check with retry
+async function checkServerConnection(retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            console.log(`Checking server connection (attempt ${i + 1}/${retries})...`);
+            const data = await fetchAPI('/api/status');
+            console.log('Server status:', data);
+            return data.status === 'ok';
+        } catch (error) {
+            console.error(`Connection attempt ${i + 1} failed:`, error);
+            if (i === retries - 1) {
+                return false;
+            }
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
     }
+    return false;
 }
 
-// Login function
+// Login function with better error handling
 async function login(event) {
     event.preventDefault();
     const loginBtn = document.querySelector('button[type="submit"]');
+    const errorDiv = document.getElementById('loginError') || createErrorDiv();
     
     try {
+        loginBtn.disabled = true;
         loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+        errorDiv.textContent = '';
         
         const isConnected = await checkServerConnection();
         if (!isConnected) {
-            throw new Error('Unable to connect to server');
+            throw new Error('Unable to connect to server. Please try again later.');
         }
 
-        const email = document.getElementById('email').value;
+        const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+            throw new Error('Please enter both email and password');
+        }
 
         loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
         
@@ -288,9 +317,23 @@ async function login(event) {
         localStorage.setItem('user', JSON.stringify(data.user));
         window.location.href = 'dashboard.html';
     } catch (error) {
+        errorDiv.textContent = error.message || 'Login failed';
         loginBtn.innerHTML = 'Login';
-        alert(error.message || 'Login failed');
+    } finally {
+        loginBtn.disabled = false;
     }
+}
+
+// Helper function to create error div
+function createErrorDiv() {
+    const errorDiv = document.createElement('div');
+    errorDiv.id = 'loginError';
+    errorDiv.style.color = 'red';
+    errorDiv.style.marginTop = '10px';
+    errorDiv.style.textAlign = 'center';
+    const form = document.querySelector('form');
+    form.appendChild(errorDiv);
+    return errorDiv;
 }
 
 // Update the username availability check function
