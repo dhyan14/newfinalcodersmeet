@@ -216,18 +216,21 @@ window.onload = async () => {
     }
 };
 
-// API configuration with environment-aware base URL
+// API configuration with proper URL detection
 const API_CONFIG = {
-    baseURL: process.env.NODE_ENV === 'production' 
-        ? window.location.origin 
-        : 'http://localhost:5000',
+    // Use window.location.origin instead of process.env
+    baseURL: window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000' 
+        : window.location.origin,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
 };
 
-// API helper function with better error handling and logging
+console.log('API base URL:', API_CONFIG.baseURL);
+
+// API helper function with better error handling
 async function fetchAPI(endpoint, options = {}) {
     const url = `${API_CONFIG.baseURL}${endpoint}`;
     console.log(`Making API request to: ${url}`);
@@ -239,39 +242,28 @@ async function fetchAPI(endpoint, options = {}) {
                 ...API_CONFIG.headers,
                 ...options.headers
             },
-            mode: 'cors',
-            credentials: 'include'
+            mode: 'cors'
         });
 
-        // Log response status
         console.log(`Response status: ${response.status}`);
 
-        // Handle non-JSON responses
-        const contentType = response.headers.get('content-type');
         let data;
-        
         try {
-            data = contentType && contentType.includes('application/json') 
-                ? await response.json()
-                : await response.text();
-        } catch (parseError) {
-            console.error('Response parsing error:', parseError);
-            throw new Error('Invalid response from server');
+            data = await response.json();
+        } catch (e) {
+            console.error('Error parsing JSON response:', e);
+            data = { error: 'Invalid server response' };
         }
 
         if (!response.ok) {
-            throw new Error(
-                typeof data === 'object' 
-                    ? data.error || data.message || `HTTP error! status: ${response.status}`
-                    : data || `HTTP error! status: ${response.status}`
-            );
+            throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
         }
 
         return data;
     } catch (error) {
         if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
             console.error(`Network error for ${url}:`, error);
-            throw new Error(`Unable to connect to server at ${API_CONFIG.baseURL}`);
+            throw new Error(`Unable to connect to server. Please check your internet connection.`);
         }
         throw error;
     }
