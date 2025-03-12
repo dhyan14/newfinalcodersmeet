@@ -216,42 +216,60 @@ window.onload = async () => {
     }
 };
 
-// Use the current origin for API calls
-const API_BASE_URL = window.location.origin + '/api';
+// API configuration
+const API_CONFIG = {
+    baseURL: window.location.origin,
+    headers: {
+        'Content-Type': 'application/json'
+    }
+};
 
-// Update checkServerConnection function
+// API helper function
+async function fetchAPI(endpoint, options = {}) {
+    try {
+        const url = `${API_CONFIG.baseURL}${endpoint}`;
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                ...API_CONFIG.headers,
+                ...options.headers
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || data.message || 'API request failed');
+        }
+
+        return data;
+    } catch (error) {
+        console.error(`API Error (${endpoint}):`, error);
+        throw error;
+    }
+}
+
+// Server connection check
 async function checkServerConnection() {
     try {
         console.log('Checking server connection...');
-        const response = await fetch(`${API_BASE_URL}/status`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Server response:', data);
+        const data = await fetchAPI('/api/status');
+        console.log('Server status:', data);
         return data.status === 'ok';
     } catch (error) {
-        console.error('Server connection error:', error);
+        console.error('Server connection failed:', error);
         return false;
     }
 }
 
-// Update login function
+// Login function
 async function login(event) {
     event.preventDefault();
     const loginBtn = document.querySelector('button[type="submit"]');
     
     try {
-        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking connection...';
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
         
-        // Check server connection first
         const isConnected = await checkServerConnection();
         if (!isConnected) {
             throw new Error('Unable to connect to server');
@@ -262,26 +280,16 @@ async function login(event) {
 
         loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
         
-        const response = await fetch(`${API_BASE_URL}/login`, {
+        const data = await fetchAPI('/api/login', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({ email, password })
         });
 
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.error || 'Login failed');
-        }
-
-        localStorage.setItem('user', JSON.stringify(data));
+        localStorage.setItem('user', JSON.stringify(data.user));
         window.location.href = 'dashboard.html';
     } catch (error) {
-        console.error('Login error:', error);
         loginBtn.innerHTML = 'Login';
-        alert(error.message || 'Login failed. Please try again.');
+        alert(error.message || 'Login failed');
     }
 }
 
@@ -317,7 +325,7 @@ async function checkUsernameAvailability() {
     try {
         availabilityMessage.textContent = 'Checking...';
         
-        const response = await fetch(`${API_BASE_URL}/check-username`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/check-username`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -374,7 +382,7 @@ async function handleSignup(event) {
         
         signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         
-        const response = await fetch(`${API_BASE_URL}/signup`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/signup`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -759,7 +767,7 @@ async function sendOTP() {
         verifyBtn.disabled = true;
         verifyBtn.innerHTML = 'Sending...';
         
-        const response = await fetch(`${API_BASE_URL}/send-otp`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/send-otp`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -791,7 +799,7 @@ async function verifyOTP() {
     const statusDiv = document.getElementById('emailVerificationStatus');
     
     try {
-        const response = await fetch(`${API_BASE_URL}/verify-otp`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/verify-otp`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -846,7 +854,7 @@ async function handleSignup(event) {
         
         signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         
-        const response = await fetch(`${API_BASE_URL}/signup`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/signup`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
