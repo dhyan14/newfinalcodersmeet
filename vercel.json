@@ -16,6 +16,10 @@
       "dest": "server.js"
     },
     {
+      "src": "/health",
+      "dest": "server.js"
+    },
+    {
       "handle": "filesystem"
     },
     {
