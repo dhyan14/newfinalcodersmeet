@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// MongoDB Connection
+// MongoDB Connection with detailed logging
 let isConnected = false;
 
 const connectToDatabase = async () => {
@@ -26,47 +26,85 @@ const connectToDatabase = async () => {
     }
 
     try {
+        console.log('Attempting to connect to MongoDB...');
+        console.log('Connection string:', process.env.MONGODB_URI ? 'Present' : 'Missing');
+        
         await mongoose.connect(process.env.MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000 // 5 second timeout
         });
+        
         isConnected = true;
-        console.log('MongoDB Connected');
+        console.log('MongoDB Connected Successfully');
     } catch (error) {
         console.error('MongoDB connection error:', error);
+        isConnected = false;
         throw error;
     }
 };
 
-// Basic test route
+// Status route with detailed response
 app.get('/api/status', async (req, res) => {
     try {
         await connectToDatabase();
-        res.json({ status: 'ok' });
+        res.json({ 
+            status: 'ok',
+            database: 'connected',
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        res.status(500).json({ error: 'Database connection failed' });
+        console.error('Status check failed:', error);
+        res.status(500).json({ 
+            status: 'error',
+            error: error.message,
+            details: 'Database connection failed',
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
-// Login route
+// Login route with better error handling
 app.post('/api/login', async (req, res) => {
     try {
         await connectToDatabase();
-        // Your login logic here
-        res.json({ success: true });
+        const { email, password } = req.body;
+        
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Add your login logic here
+        res.json({ success: true, user });
     } catch (error) {
-        res.status(500).json({ error: 'Login failed' });
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed', details: error.message });
     }
 });
 
-// Signup route
+// Signup route with validation
 app.post('/api/signup', async (req, res) => {
     try {
         await connectToDatabase();
-        // Your signup logic here
+        const { fullName, email, password, username } = req.body;
+        
+        // Basic validation
+        if (!email || !password || !fullName || !username) {
+            return res.status(400).json({ error: 'All fields are required' });
+        }
+        
+        // Check if user already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ error: 'Email already registered' });
+        }
+        
+        // Add your signup logic here
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'Signup failed' });
+        console.error('Signup error:', error);
+        res.status(500).json({ error: 'Signup failed', details: error.message });
     }
 });
 
@@ -87,8 +125,13 @@ app.get('*', (req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something broke!' });
+    console.error('Global error:', err);
+    res.status(500).json({ 
+        error: 'Something broke!',
+        message: err.message,
+        timestamp: new Date().toISOString()
+    });
 });
 
+// Export the app
 module.exports = app; 
