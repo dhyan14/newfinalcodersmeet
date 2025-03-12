@@ -16,10 +16,6 @@
       "dest": "server.js"
     },
     {
-      "src": "/socket.io/(.*)",
-      "dest": "server.js"
-    },
-    {
       "handle": "filesystem"
     },
     {
