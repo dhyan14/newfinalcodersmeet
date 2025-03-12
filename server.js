@@ -89,13 +89,27 @@ app.post('/api/login', async (req, res) => {
         await connectToDatabase();
         const { email, password } = req.body;
         
+        // Find user by email
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Add your login logic here
-        res.json({ success: true, user });
+        // Check password (in a real app, you would compare hashed passwords)
+        if (user.password !== password) {
+            return res.status(401).json({ error: 'Invalid password' });
+        }
+        
+        // Return user data without password
+        res.json({ 
+            success: true, 
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                username: user.username,
+                email: user.email
+            }
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed', details: error.message });
@@ -114,13 +128,42 @@ app.post('/api/signup', async (req, res) => {
         }
         
         // Check if user already exists
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ 
+            $or: [{ email }, { username }] 
+        });
+        
         if (existingUser) {
-            return res.status(400).json({ error: 'Email already registered' });
+            if (existingUser.email === email) {
+                return res.status(400).json({ error: 'Email already registered' });
+            }
+            if (existingUser.username === username) {
+                return res.status(400).json({ error: 'Username already taken' });
+            }
         }
         
-        // Add your signup logic here
-        res.json({ success: true });
+        // Create new user
+        const newUser = new User({
+            fullName,
+            username,
+            email,
+            password, // In a real app, you should hash this password
+            createdAt: new Date()
+        });
+        
+        // Save user to database
+        await newUser.save();
+        
+        // Return success without sending the password back
+        res.status(201).json({ 
+            success: true, 
+            message: 'User registered successfully',
+            user: {
+                _id: newUser._id,
+                fullName: newUser.fullName,
+                username: newUser.username,
+                email: newUser.email
+            }
+        });
     } catch (error) {
         console.error('Signup error:', error);
         res.status(500).json({ error: 'Signup failed', details: error.message });
