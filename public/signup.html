@@ -6,7 +6,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
     <link rel="stylesheet" href="style.css">
-    <title>Sign Up | CodersMEET</title>
+    <title>Sign Up - Coders Portfolio</title>
+    <script src="connection.js"></script>
     <style>
         .main-container {
             display: flex;
@@ -257,91 +258,43 @@
             </div>
             <div class="links">
                 <div class="link"><a href="index.html">Home</a></div>
-                <div class="link"><a href="#">About</a></div>
-                <div class="link"><a href="#">Skills</a></div>
-                <div class="link"><a href="#">Services</a></div>
-                <div class="link"><a href="#">Contact</a></div>
-                <div class="link">
-                    <a href="login.html" style="background: #077b32; color: white; padding: 8px 16px; border-radius: 4px;">Login/Signup</a>
-                </div>
-            </div>
-            <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
-        </div>
-        <div class="dropdown">
-            <div class="links">
-                <a href="index.html">Home</a>
-                <a href="#">About</a>
-                <a href="#">Skills</a>
-                <a href="#">Service</a>
-                <a href="#">Contact</a>
-                <a href="login.html" style="background: #077b32; color: white; padding: 8px 16px; border-radius: 4px;">Login/Signup</a>
-                <i class="fa-solid fa-xmark cancel" onclick="cancel()"></i>
+                <div class="link"><a href="login.html">Login</a></div>
             </div>
         </div>
     </nav>
     <section>
         <div class="main-container">
-            <div class="login-content">
-                <div class="signup-form">
-                    <h2>Create Account</h2>
-                    <form id="signupForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <i class="fa-solid fa-user"></i>
-                                <input type="text" id="fullName" placeholder="Full Name" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <i class="fa-solid fa-envelope"></i>
-                                <div class="email-container">
-                                    <input type="email" id="email" placeholder="Email Address" required>
-                                    <button type="button" id="verifyEmailBtn" class="check-btn">
-                                        Verify Email
-                                    </button>
-                                </div>
-                                <div id="emailVerificationStatus"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <i class="fa-solid fa-at"></i>
-                                <div class="username-container">
-                                    <input type="text" id="username" placeholder="Choose a username" required>
-                                    <button type="button" id="checkUsernameBtn" class="check-btn">
-                                        Check
-                                    </button>
-                                </div>
-                                <div id="usernameAvailability"></div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <i class="fa-solid fa-lock"></i>
-                                <input type="password" id="password" placeholder="Password" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <i class="fa-solid fa-lock"></i>
-                                <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-options">
-                                <label>
-                                    <input type="checkbox" id="terms" required> I agree to the Terms & Conditions
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="login-btn">Sign Up</button>
-                        <p class="signup-text">
-                            Already have an account? <a href="login.html">Login</a>
-                        </p>
-                    </form>
-                </div>
+            <div class="signup-content">
+                <h2>Create Your Account</h2>
+                <form id="signupForm">
+                    <div class="form-group">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="fullName" placeholder="Full Name" required>
+                    </div>
+                    <div class="form-group">
+                        <i class="fa-solid fa-at"></i>
+                        <input type="text" id="username" placeholder="Username" required>
+                        <div id="usernameAvailability" class="availability-message"></div>
+                    </div>
+                    <div class="form-group">
+                        <i class="fa-solid fa-envelope"></i>
+                        <input type="email" id="email" placeholder="Email Address" required>
+                    </div>
+                    <div class="form-group">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="password" placeholder="Password" required>
+                    </div>
+                    <div class="form-group">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                    </div>
+                    <button type="submit" class="signup-btn">Sign Up</button>
+                    <p class="login-text">
+                        Already have an account? <a href="login.html">Login</a>
+                    </p>
+                </form>
+                <div id="server-status" class="server-status"></div>
+                <div id="signupError" class="error-message"></div>
             </div>
         </div>
     </section>
@@ -359,76 +312,90 @@
     <script>
         AOS.init();
         
-        let isUsernameAvailable = false;
-        
+        // Check server connection on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const serverStatus = document.getElementById('server-status');
+                const isConnected = await window.AppConnection.checkHealth();
+                
+                if (serverStatus) {
+                    serverStatus.textContent = `Server: ${isConnected ? 'Connected' : 'Not connected'}`;
+                    serverStatus.style.color = isConnected ? 'green' : 'red';
+                }
+            } catch (error) {
+                console.error('Server connection check failed:', error);
+                const serverStatus = document.getElementById('server-status');
+                if (serverStatus) {
+                    serverStatus.textContent = 'Server: Not connected';
+                    serverStatus.style.color = 'red';
+                }
+            }
+        });
+
+        // Username availability check
         const usernameInput = document.getElementById('username');
-        const checkButton = document.getElementById('checkUsernameBtn');
-        const availabilityDiv = document.getElementById('usernameAvailability');
-        const signupForm = document.getElementById('signupForm');
+        const availabilityMessage = document.getElementById('usernameAvailability');
         
-        async function checkUsernameAvailability() {
-            const username = usernameInput.value.trim();
-            
-            if (!username) {
-                availabilityDiv.innerHTML = '<span style="color: red;">Please enter a username</span>';
+        usernameInput.addEventListener('blur', async function() {
+            const username = this.value.trim();
+            if (username.length < 3) {
+                availabilityMessage.textContent = 'Username must be at least 3 characters';
+                availabilityMessage.style.color = 'red';
                 return;
             }
-
+            
             try {
-                checkButton.disabled = true;
-                checkButton.innerHTML = 'Checking...';
+                availabilityMessage.textContent = 'Checking...';
                 
-                const response = await fetch('http://localhost:5000/api/check-username', {
+                const data = await window.AppConnection.request('/api/check-username', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
                     body: JSON.stringify({ username })
                 });
                 
-                const data = await response.json();
-                
                 if (data.available) {
-                    availabilityDiv.innerHTML = '<span style="color: green;">✓ Username is available!</span>';
-                    isUsernameAvailable = true;
+                    availabilityMessage.textContent = 'Username available';
+                    availabilityMessage.style.color = 'green';
                 } else {
-                    availabilityDiv.innerHTML = '<span style="color: red;">✗ Username is already taken</span>';
-                    isUsernameAvailable = false;
+                    availabilityMessage.textContent = 'Username already taken';
+                    availabilityMessage.style.color = 'red';
                 }
             } catch (error) {
-                console.error('Error checking username:', error);
-                availabilityDiv.innerHTML = '<span style="color: red;">Error checking username</span>';
-            } finally {
-                checkButton.disabled = false;
-                checkButton.innerHTML = 'Check';
+                console.error('Username check error:', error);
+                availabilityMessage.textContent = 'Error checking username';
+                availabilityMessage.style.color = 'red';
             }
-        }
+        });
 
-        async function handleSignup(event) {
+        // Signup form handler
+        document.getElementById('signupForm').addEventListener('submit', async function(event) {
             event.preventDefault();
             
-            if (!isUsernameAvailable) {
-                alert('Please check username availability first');
-                return;
-            }
-
             const fullName = document.getElementById('fullName').value.trim();
-            const username = usernameInput.value.trim();
+            const username = document.getElementById('username').value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
+            const signupBtn = document.querySelector('.signup-btn');
+            const errorDiv = document.getElementById('signupError');
             
-            if (password !== confirmPassword) {
-                alert('Passwords do not match!');
+            // Basic validation
+            if (!fullName || !username || !email || !password) {
+                errorDiv.textContent = 'Please fill in all fields';
                 return;
             }
-
+            
+            if (password !== confirmPassword) {
+                errorDiv.textContent = 'Passwords do not match';
+                return;
+            }
+            
             try {
-                const response = await fetch('http://localhost:5000/api/signup', {
+                signupBtn.disabled = true;
+                signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                errorDiv.textContent = '';
+                
+                const data = await window.AppConnection.request('/api/signup', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
                     body: JSON.stringify({
                         fullName,
                         username,
@@ -436,30 +403,23 @@
                         password
                     })
                 });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Registration failed');
-                }
-
-                alert('Registration successful! Please login.');
-                window.location.href = 'login.html';
+                
+                signupBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+                
+                // Show success message and redirect
+                alert('Account created successfully! Please login.');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1000);
             } catch (error) {
                 console.error('Signup error:', error);
-                alert(error.message || 'Registration failed');
+                errorDiv.textContent = error.message || 'Signup failed';
+                signupBtn.innerHTML = 'Sign Up';
+            } finally {
+                signupBtn.disabled = false;
             }
-        }
-
-        checkButton.addEventListener('click', checkUsernameAvailability);
-        
-        usernameInput.addEventListener('input', function() {
-            isUsernameAvailable = false;
-            availabilityDiv.innerHTML = '';
         });
-        
-        signupForm.addEventListener('submit', handleSignup);
-        
+
         function hamburg() {
             document.querySelector('.dropdown').style.display = 'block';
         }
