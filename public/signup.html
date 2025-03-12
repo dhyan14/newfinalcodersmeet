@@ -336,8 +336,16 @@
         const usernameInput = document.getElementById('username');
         const availabilityMessage = document.getElementById('usernameAvailability');
         
-        usernameInput.addEventListener('blur', async function() {
-            const username = this.value.trim();
+        usernameInput.addEventListener('blur', checkUsernameAvailability);
+
+        async function checkUsernameAvailability() {
+            const username = usernameInput.value.trim();
+            
+            // Clear previous message
+            availabilityMessage.textContent = '';
+            
+            if (!username) return;
+            
             if (username.length < 3) {
                 availabilityMessage.textContent = 'Username must be at least 3 characters';
                 availabilityMessage.style.color = 'red';
@@ -346,11 +354,23 @@
             
             try {
                 availabilityMessage.textContent = 'Checking...';
+                availabilityMessage.style.color = 'blue';
                 
-                const data = await window.AppConnection.request('/api/check-username', {
+                // Use a direct fetch with error handling instead of AppConnection
+                // This provides a fallback if the connection module has issues
+                const response = await fetch(`${window.location.origin}/api/check-username`, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({ username })
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Server error');
+                }
+                
+                const data = await response.json();
                 
                 if (data.available) {
                     availabilityMessage.textContent = 'Username available';
@@ -361,10 +381,10 @@
                 }
             } catch (error) {
                 console.error('Username check error:', error);
-                availabilityMessage.textContent = 'Error checking username';
-                availabilityMessage.style.color = 'red';
+                availabilityMessage.textContent = 'Could not verify username';
+                availabilityMessage.style.color = 'orange';
             }
-        });
+        }
 
         // Signup form handler
         document.getElementById('signupForm').addEventListener('submit', async function(event) {
