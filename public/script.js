@@ -216,14 +216,14 @@ window.onload = async () => {
     }
 };
 
-// Remove hardcoded localhost URL
-const API_URL = '/api';  // This will work both locally and in production
+// Use the current origin for API calls
+const API_BASE_URL = window.location.origin + '/api';
 
-// Add better error handling for server connection
+// Update checkServerConnection function
 async function checkServerConnection() {
     try {
         console.log('Checking server connection...');
-        const response = await fetch(`${API_URL}/status`, {
+        const response = await fetch(`${API_BASE_URL}/status`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -231,12 +231,11 @@ async function checkServerConnection() {
         });
         
         if (!response.ok) {
-            console.error('Server response not OK:', await response.text());
-            return false;
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Server status:', data);
+        console.log('Server response:', data);
         return data.status === 'ok';
     } catch (error) {
         console.error('Server connection error:', error);
@@ -244,23 +243,26 @@ async function checkServerConnection() {
     }
 }
 
-// Update login function with better error handling
+// Update login function
 async function login(event) {
     event.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
     const loginBtn = document.querySelector('button[type="submit"]');
     
     try {
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking connection...';
+        
         // Check server connection first
         const isConnected = await checkServerConnection();
         if (!isConnected) {
-            throw new Error('Unable to connect to server. Please make sure the server is running.');
+            throw new Error('Unable to connect to server');
         }
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
         loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
         
-        const response = await fetch(`${API_URL}/login`, {
+        const response = await fetch(`${API_BASE_URL}/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -268,27 +270,18 @@ async function login(event) {
             body: JSON.stringify({ email, password })
         });
 
+        const data = await response.json();
+        
         if (!response.ok) {
-            const data = await response.json();
             throw new Error(data.error || 'Login failed');
         }
 
-        const data = await response.json();
-        
-        // Store user data
-        localStorage.setItem('user', JSON.stringify({
-            id: data.id,
-            fullName: data.fullName,
-            username: data.username,
-            email: data.email,
-            skills: data.skills || []
-        }));
-
+        localStorage.setItem('user', JSON.stringify(data));
         window.location.href = 'dashboard.html';
     } catch (error) {
         console.error('Login error:', error);
         loginBtn.innerHTML = 'Login';
-        alert(error.message || 'Unable to connect to server. Please try again.');
+        alert(error.message || 'Login failed. Please try again.');
     }
 }
 
@@ -324,7 +317,7 @@ async function checkUsernameAvailability() {
     try {
         availabilityMessage.textContent = 'Checking...';
         
-        const response = await fetch(`${API_URL}/check-username`, {
+        const response = await fetch(`${API_BASE_URL}/check-username`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -381,7 +374,7 @@ async function handleSignup(event) {
         
         signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         
-        const response = await fetch(`${API_URL}/signup`, {
+        const response = await fetch(`${API_BASE_URL}/signup`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -753,3 +746,150 @@ function cancel() {
     const dropdown = document.querySelector('.dropdown');
     dropdown.classList.remove('active');
 }
+
+// Add these functions after other functions
+let isEmailVerified = false;
+
+async function sendOTP() {
+    const email = document.getElementById('email').value.trim();
+    const verifyBtn = document.getElementById('verifyEmailBtn');
+    const statusDiv = document.getElementById('emailVerificationStatus');
+    
+    try {
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = 'Sending...';
+        
+        const response = await fetch(`${API_BASE_URL}/send-otp`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('otpModal').style.display = 'flex';
+            document.getElementById('resendOtpBtn').style.display = 'block';
+            statusDiv.innerHTML = '<span style="color: green;">OTP sent! Please check your email.</span>';
+        } else {
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<span style="color: red;">${error.message}</span>`;
+    } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = 'Verify Email';
+    }
+}
+
+async function verifyOTP() {
+    const email = document.getElementById('email').value.trim();
+    const otp = document.getElementById('otpInput').value.trim();
+    const messageDiv = document.getElementById('otpMessage');
+    const statusDiv = document.getElementById('emailVerificationStatus');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/verify-otp`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, otp })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            isEmailVerified = true;
+            document.getElementById('otpModal').style.display = 'none';
+            statusDiv.innerHTML = '<span style="color: green;">✓ Email verified!</span>';
+            document.getElementById('verifyEmailBtn').disabled = true;
+            document.getElementById('email').readOnly = true;
+        } else {
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<span style="color: red;">${error.message}</span>`;
+    }
+}
+
+// Update the handleSignup function to check for email verification
+async function handleSignup(event) {
+    event.preventDefault();
+    
+    if (!isEmailVerified) {
+        alert('Please verify your email first');
+        return;
+    }
+    
+    if (!validateForm('signupForm')) return;
+
+    const fullName = document.getElementById('fullName').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const signupBtn = document.querySelector('.signup-btn');
+    
+    try {
+        // Check server connection first
+        const isConnected = await checkServerConnection();
+        if (!isConnected) {
+            throw new Error('Unable to connect to server. Please try again later.');
+        }
+
+        if (password !== confirmPassword) {
+            throw new Error('Passwords do not match!');
+        }
+        
+        signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        const response = await fetch(`${API_BASE_URL}/signup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                fullName,
+                username,
+                email,
+                password
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Registration failed');
+        }
+        
+        signupBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+        alert('Registration successful! Please login.');
+        window.location.href = 'login.html';
+    } catch (error) {
+        console.error('Signup error:', error);
+        signupBtn.innerHTML = 'Sign Up';
+        alert(error.message || 'Registration failed. Please try again.');
+    }
+}
+
+// Add event listeners when the document loads
+document.addEventListener('DOMContentLoaded', function() {
+    const verifyEmailBtn = document.getElementById('verifyEmailBtn');
+    const submitOtpBtn = document.getElementById('submitOtpBtn');
+    const resendOtpBtn = document.getElementById('resendOtpBtn');
+    
+    if (verifyEmailBtn) {
+        verifyEmailBtn.addEventListener('click', sendOTP);
+    }
+    
+    if (submitOtpBtn) {
+        submitOtpBtn.addEventListener('click', verifyOTP);
+    }
+    
+    if (resendOtpBtn) {
+        resendOtpBtn.addEventListener('click', sendOTP);
+    }
+});
