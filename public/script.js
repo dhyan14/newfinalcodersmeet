@@ -216,75 +216,97 @@ window.onload = async () => {
     }
 };
 
-// API configuration
+// API configuration with environment-aware base URL
 const API_CONFIG = {
-    baseURL: window.location.origin,
+    baseURL: process.env.NODE_ENV === 'production' 
+        ? window.location.origin 
+        : 'http://localhost:5000',
     headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
     }
 };
 
-// API helper function with better error handling
+// API helper function with better error handling and logging
 async function fetchAPI(endpoint, options = {}) {
-    try {
-        const url = `${API_CONFIG.baseURL}${endpoint}`;
-        console.log(`Making request to: ${url}`);
+    const url = `${API_CONFIG.baseURL}${endpoint}`;
+    console.log(`Making API request to: ${url}`);
 
+    try {
         const response = await fetch(url, {
             ...options,
             headers: {
                 ...API_CONFIG.headers,
                 ...options.headers
             },
-            credentials: 'same-origin' // Add this for cookies if needed
+            mode: 'cors',
+            credentials: 'include'
         });
+
+        // Log response status
+        console.log(`Response status: ${response.status}`);
 
         // Handle non-JSON responses
         const contentType = response.headers.get('content-type');
-        const data = contentType && contentType.includes('application/json') 
-            ? await response.json()
-            : await response.text();
+        let data;
+        
+        try {
+            data = contentType && contentType.includes('application/json') 
+                ? await response.json()
+                : await response.text();
+        } catch (parseError) {
+            console.error('Response parsing error:', parseError);
+            throw new Error('Invalid response from server');
+        }
 
         if (!response.ok) {
             throw new Error(
                 typeof data === 'object' 
-                    ? data.error || data.message || 'API request failed'
-                    : data || 'API request failed'
+                    ? data.error || data.message || `HTTP error! status: ${response.status}`
+                    : data || `HTTP error! status: ${response.status}`
             );
         }
 
         return data;
     } catch (error) {
         if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-            console.error(`Network error for ${endpoint}:`, error);
-            throw new Error('Unable to connect to server. Please check your internet connection.');
+            console.error(`Network error for ${url}:`, error);
+            throw new Error(`Unable to connect to server at ${API_CONFIG.baseURL}`);
         }
-        console.error(`API Error (${endpoint}):`, error);
         throw error;
     }
 }
 
-// Server connection check with retry
-async function checkServerConnection(retries = 3) {
+// Server connection check with retry and timeout
+async function checkServerConnection(retries = 3, timeout = 5000) {
     for (let i = 0; i < retries; i++) {
         try {
             console.log(`Checking server connection (attempt ${i + 1}/${retries})...`);
-            const data = await fetchAPI('/api/status');
-            console.log('Server status:', data);
-            return data.status === 'ok';
+            
+            // Add timeout to fetch
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const data = await fetchAPI('/api/status', {
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            console.log('Server connection successful:', data);
+            return true;
         } catch (error) {
             console.error(`Connection attempt ${i + 1} failed:`, error);
             if (i === retries - 1) {
                 return false;
             }
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
         }
     }
     return false;
 }
 
-// Login function with better error handling
+// Login function with better error handling and user feedback
 async function login(event) {
     event.preventDefault();
     const loginBtn = document.querySelector('button[type="submit"]');
@@ -297,7 +319,7 @@ async function login(event) {
         
         const isConnected = await checkServerConnection();
         if (!isConnected) {
-            throw new Error('Unable to connect to server. Please try again later.');
+            throw new Error('Unable to connect to server. Please check your internet connection and try again.');
         }
 
         const email = document.getElementById('email').value.trim();
@@ -314,10 +336,14 @@ async function login(event) {
             body: JSON.stringify({ email, password })
         });
 
-        localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = 'dashboard.html';
+        if (data.success) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            window.location.href = 'dashboard.html';
+        } else {
+            throw new Error(data.message || 'Login failed');
+        }
     } catch (error) {
-        errorDiv.textContent = error.message || 'Login failed';
+        errorDiv.textContent = error.message;
         loginBtn.innerHTML = 'Login';
     } finally {
         loginBtn.disabled = false;
