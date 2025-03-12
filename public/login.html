@@ -3,148 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Coders Meet</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <title>Login - Coders Portfolio</title>
     <!-- Add connection script first -->
     <script src="connection.js"></script>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        
-        .login-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 25px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
-        }
-        
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-            box-sizing: border-box;
-        }
-        
-        input:focus {
-            border-color: #4CAF50;
-            outline: none;
-        }
-        
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        button:hover {
-            background-color: #45a049;
-        }
-        
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        p {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-        }
-        
-        a {
-            color: #4CAF50;
-            text-decoration: none;
-        }
-        
-        a:hover {
-            text-decoration: underline;
-        }
-        
-        .error-message {
-            color: #d32f2f;
-            font-size: 14px;
-            margin-top: 10px;
-            text-align: center;
-        }
-        
-        .logo {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .logo span {
-            color: #4CAF50;
-        }
-    </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="logo">Coders <span>MEET</span></div>
-        <h2>Login to Your Account</h2>
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" required placeholder="Enter your email">
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                Coders <span>MEET</span>
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" required placeholder="Enter your password">
+            <div class="links">
+                <div class="link"><a href="index.html">Home</a></div>
+                <div class="link"><a href="signup.html">Sign Up</a></div>
             </div>
-            <button type="submit">Login</button>
-            <div id="loginError" class="error-message"></div>
-        </form>
-        <p>Don't have an account? <a href="signup.html">Sign up</a></p>
-        <p><a href="forgot-password.html">Forgot password?</a></p>
+        </div>
+    </nav>
+
+    <div id="welcomeMessage" style="text-align: center; margin: 20px; display: none;">
+        <h2>Welcome back, <span id="userName"></span>!</h2>
     </div>
-    
+
+    <section>
+        <div class="main-container">
+            <div class="login-content">
+                <h2>Welcome Back</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <i class="fa-solid fa-envelope"></i>
+                        <input type="email" id="loginEmail" placeholder="Email Address" required>
+                    </div>
+                    <div class="form-group">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="loginPassword" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="login-btn">Login</button>
+                    <p class="signup-text">
+                        Don't have an account? <a href="signup.html">Sign up</a>
+                    </p>
+                </form>
+                <div id="server-status" class="server-status"></div>
+                <div id="loginError" class="error-message"></div>
+            </div>
+        </div>
+    </section>
+
     <script>
+        // Check server connection on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const serverStatus = document.getElementById('server-status');
+                const isConnected = await window.AppConnection.checkHealth();
+                
+                if (serverStatus) {
+                    serverStatus.textContent = `Server: ${isConnected ? 'Connected' : 'Not connected'}`;
+                    serverStatus.style.color = isConnected ? 'green' : 'red';
+                }
+            } catch (error) {
+                console.error('Server connection check failed:', error);
+                const serverStatus = document.getElementById('server-status');
+                if (serverStatus) {
+                    serverStatus.textContent = 'Server: Not connected';
+                    serverStatus.style.color = 'red';
+                }
+            }
+        });
+
         // Login form handler
         document.getElementById('loginForm').addEventListener('submit', async function(event) {
             event.preventDefault();
             
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const loginBtn = document.querySelector('button[type="submit"]');
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.querySelector('.login-btn');
             const errorDiv = document.getElementById('loginError');
             
             if (!email || !password) {
@@ -154,7 +87,7 @@
             
             try {
                 loginBtn.disabled = true;
-                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
                 errorDiv.textContent = '';
                 
                 const data = await window.AppConnection.request('/api/login', {
@@ -162,13 +95,30 @@
                     body: JSON.stringify({ email, password })
                 });
                 
-                localStorage.setItem('user', JSON.stringify(data.user));
-                window.location.href = 'dashboard.html';
+                // Store user data
+                localStorage.setItem('user', JSON.stringify({
+                    id: data._id,
+                    fullName: data.fullName,
+                    username: data.username,
+                    email: data.email
+                }));
+                
+                // Show welcome message
+                document.getElementById('userName').textContent = data.fullName;
+                document.getElementById('welcomeMessage').style.display = 'block';
+                
+                loginBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+                
+                // Delay redirect to show welcome message
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
             } catch (error) {
+                console.error('Login error:', error);
                 errorDiv.textContent = error.message || 'Login failed';
+                loginBtn.innerHTML = 'Login';
             } finally {
                 loginBtn.disabled = false;
-                loginBtn.innerHTML = 'Login';
             }
         });
     </script>
