@@ -198,6 +198,37 @@ app.post('/api/check-username', async (req, res) => {
     }
 });
 
+// Get user by ID
+app.get('/api/users/:id', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const userId = req.params.id;
+        
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Return user data without password
+        res.json({ 
+            success: true, 
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                username: user.username,
+                email: user.email,
+                bio: user.bio,
+                avatarUrl: user.avatarUrl,
+                skills: user.skills,
+                connections: user.connections.length
+            }
+        });
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({ error: 'Failed to get user data', details: error.message });
+    }
+});
+
 // Serve static files
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
