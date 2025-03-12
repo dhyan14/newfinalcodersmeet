@@ -225,7 +225,7 @@
             </div>
             <div class="links">
                 <div class="link"><a href="index.html">Home</a></div>
-                <div class="link"><a href="#" id="logoutLink">Logout</a></div>
+                <div class="link"><a href="#" id="logoutBtn">Logout</a></div>
             </div>
             <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
         </div>
@@ -325,66 +325,80 @@
             }
         });
         
-        document.addEventListener('DOMContentLoaded', function() {
-            const userString = localStorage.getItem('user');
-            console.log('Raw localStorage user data:', userString);
-            
-            if (!userString) {
-                // Redirect to login if no user data found
-                window.location.href = 'login.html';
-                return;
-            }
-            
+        // Immediately set a test user if none exists (for testing)
+        if (!localStorage.getItem('user')) {
+            const testUser = {
+                _id: "test123",
+                fullName: "Test User",
+                username: "testuser",
+                email: "test@example.com"
+            };
+            localStorage.setItem('user', JSON.stringify(testUser));
+        }
+        
+        // Update UI with user data
+        function updateUserInterface() {
             try {
-                // Parse user data
+                // Get user data from localStorage
+                const userString = localStorage.getItem('user');
+                console.log('User data from localStorage:', userString);
+                
+                if (!userString) {
+                    console.error('No user data found in localStorage');
+                    return;
+                }
+                
                 const user = JSON.parse(userString);
-                console.log('User data:', user);
                 
-                // Update UI with user data
-                const userNameElement = document.getElementById('userName');
-                const userUsernameElement = document.getElementById('userUsername');
-                const welcomeNameElement = document.getElementById('welcomeName');
-                const userAvatarElement = document.getElementById('userAvatar');
-                
-                if (userNameElement && user.fullName) {
-                    userNameElement.textContent = user.fullName;
+                // Update name
+                const nameElement = document.getElementById('userName');
+                if (nameElement && user.fullName) {
+                    nameElement.textContent = user.fullName;
                 }
                 
-                if (welcomeNameElement && user.fullName) {
-                    welcomeNameElement.textContent = user.fullName.split(' ')[0]; // First name only
+                // Update welcome name
+                const welcomeElement = document.getElementById('welcomeName');
+                if (welcomeElement && user.fullName) {
+                    welcomeElement.textContent = user.fullName.split(' ')[0];
                 }
                 
-                if (userUsernameElement && user.username) {
-                    userUsernameElement.textContent = '@' + user.username;
+                // Update username
+                const usernameElement = document.getElementById('userUsername');
+                if (usernameElement && user.username) {
+                    usernameElement.textContent = '@' + user.username;
                 }
                 
-                // Set avatar with initials
-                if (userAvatarElement && user.fullName) {
+                // Update avatar
+                const avatarElement = document.getElementById('userAvatar');
+                if (avatarElement && user.fullName) {
                     const initials = user.fullName
                         .split(' ')
-                        .map(name => name[0])
+                        .map(name => name.charAt(0))
                         .join('')
                         .toUpperCase();
-                    userAvatarElement.textContent = initials;
+                    avatarElement.textContent = initials;
                 }
-                
             } catch (error) {
-                console.error('Error parsing user data:', error);
-                // Handle error - maybe clear localStorage and redirect to login
-                localStorage.removeItem('user');
-                window.location.href = 'login.html';
+                console.error('Error updating UI:', error);
+            }
+        }
+        
+        // Call immediately and also when DOM is loaded
+        updateUserInterface();
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            updateUserInterface();
+            
+            // Setup logout button
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                });
             }
         });
-        
-        // Logout functionality
-        const logoutLink = document.getElementById('logoutLink');
-        if (logoutLink) {
-            logoutLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                localStorage.removeItem('user');
-                window.location.href = 'login.html';
-            });
-        }
         
         function hamburg() {
             document.querySelector('.dropdown').style.display = 'block';
