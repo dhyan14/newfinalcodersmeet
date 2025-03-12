@@ -12,46 +12,45 @@ const SquadChat = require('./models/SquadChat');
 
 const app = express();
 
-// Middleware
-app.use(cors({
-    origin: true, // Allow all origins in development
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// CORS configuration
+const corsOptions = {
+    origin: '*', // Allow all origins
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
 
-// Add OPTIONS handler for preflight requests
-app.options('*', cors());
+// Apply CORS middleware
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
+// Other middleware
 app.use(express.json());
 app.use(express.static('public'));
 
-// Add after your middleware setup
+// Request logger
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
 
-// MongoDB Connection with detailed logging
+// MongoDB Connection
 let isConnected = false;
 
 const connectToDatabase = async () => {
-    if (isConnected) {
-        return;
-    }
+    if (isConnected) return;
 
     try {
-        console.log('Attempting to connect to MongoDB...');
-        console.log('Connection string:', process.env.MONGODB_URI ? 'Present' : 'Missing');
-        
+        console.log('Connecting to MongoDB...');
         await mongoose.connect(process.env.MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 5000 // 5 second timeout
+            serverSelectionTimeoutMS: 10000
         });
-        
         isConnected = true;
-        console.log('MongoDB Connected Successfully');
+        console.log('MongoDB Connected');
     } catch (error) {
         console.error('MongoDB connection error:', error);
         isConnected = false;
@@ -59,28 +58,25 @@ const connectToDatabase = async () => {
     }
 };
 
-// Status route with detailed response
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Status endpoint
 app.get('/api/status', async (req, res) => {
     try {
-        console.log('Status check requested');
         await connectToDatabase();
-        
-        const status = {
+        res.json({
             status: 'ok',
-            database: isConnected ? 'connected' : 'disconnected',
-            timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV,
-            mongodbUri: process.env.MONGODB_URI ? 'configured' : 'missing'
-        };
-        
-        console.log('Status response:', status);
-        res.json(status);
+            server: true,
+            database: isConnected,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        console.error('Status check failed:', error);
         res.status(500).json({
             status: 'error',
-            error: error.message,
-            details: 'Database connection failed',
+            message: error.message,
             timestamp: new Date().toISOString()
         });
     }
@@ -145,19 +141,13 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Add error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
     console.error('Error:', err);
     res.status(500).json({
         status: 'error',
-        message: err.message || 'Internal server error',
-        timestamp: new Date().toISOString()
+        message: err.message || 'Internal server error'
     });
-});
-
-// Add this near your other routes
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Export the app
