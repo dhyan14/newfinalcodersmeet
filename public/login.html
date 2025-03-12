@@ -95,24 +95,26 @@
                     body: JSON.stringify({ email, password })
                 });
                 
-                // Store user data
-                localStorage.setItem('user', JSON.stringify({
-                    id: data._id,
-                    fullName: data.fullName,
-                    username: data.username,
-                    email: data.email
-                }));
+                console.log('Login response:', data); // Debug log
                 
-                // Show welcome message
-                document.getElementById('userName').textContent = data.fullName;
-                document.getElementById('welcomeMessage').style.display = 'block';
-                
-                loginBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
-                
-                // Delay redirect to show welcome message
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 2000);
+                // Store user data with the correct structure
+                if (data.success && data.user) {
+                    // Store user data
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Show welcome message
+                    document.getElementById('userName').textContent = data.user.fullName;
+                    document.getElementById('welcomeMessage').style.display = 'block';
+                    
+                    loginBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+                    
+                    // Delay redirect to show welcome message
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
+                } else {
+                    throw new Error('Invalid login response');
+                }
             } catch (error) {
                 console.error('Login error:', error);
                 errorDiv.textContent = error.message || 'Login failed';
