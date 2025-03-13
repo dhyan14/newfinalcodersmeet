@@ -22,7 +22,7 @@ const socketIoOptions = {
     methods: ["GET", "POST"],
     credentials: true
   },
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'],
   path: '/socket.io/',
   allowEIO3: true, // Allow Engine.IO 3 compatibility
   pingTimeout: 60000, // Increase ping timeout
@@ -55,6 +55,23 @@ app.use(express.static('public'));
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
     next();
+});
+
+// Add explicit MIME type handling
+app.use((req, res, next) => {
+  const url = req.url;
+  
+  if (url.endsWith('.js')) {
+    res.setHeader('Content-Type', 'application/javascript');
+  } else if (url.endsWith('.css')) {
+    res.setHeader('Content-Type', 'text/css');
+  } else if (url.endsWith('.html')) {
+    res.setHeader('Content-Type', 'text/html');
+  } else if (url.endsWith('.json')) {
+    res.setHeader('Content-Type', 'application/json');
+  }
+  
+  next();
 });
 
 // MongoDB Connection
@@ -259,9 +276,24 @@ app.get('/*.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
-// Catch-all route
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Update your catch-all route to only handle HTML requests, not API requests
+app.get('*', (req, res, next) => {
+  // Skip API routes - they should be handled by their own handlers
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  
+  // For non-API routes, serve the index.html file
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Add a specific 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    status: 'error',
+    message: 'API endpoint not found',
+    path: req.path
+  });
 });
 
 // Error handler
@@ -290,15 +322,6 @@ app.use((err, req, res, next) => {
         status: 'error',
         message: err.message || 'Internal server error',
         timestamp: new Date().toISOString()
-    });
-});
-
-// Add this to handle 404s
-app.use((req, res) => {
-    res.status(404).json({
-        status: 'error',
-        message: 'Not Found',
-        path: req.path
     });
 });
 
