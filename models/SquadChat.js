@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
 
 const squadChatSchema = new mongoose.Schema({
-    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    content: String,
+    squadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Squad', required: true },
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    senderName: { type: String, required: true }, // Store the username for easier display
+    content: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
 });
 
