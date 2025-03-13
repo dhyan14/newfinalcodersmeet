@@ -1100,22 +1100,13 @@
 
 
             <div class="chat-container">
-                <div class="chat-header">
-                    <div class="section-title">
-                        <i class="fas fa-comments"></i>
-                        Squad Chat
-                    </div>
-                    <div id="connectionStatus" class="connection-status offline">Offline</div>
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <!-- Messages will be populated here -->
-                </div>
+                <div id="chat-messages" class="chat-messages"></div>
                 <div class="chat-input">
-                    <input type="text" id="messageInput" placeholder="Type a message...">
-                    <button id="sendMessageBtn">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <input type="text" id="message-input" placeholder="Type your message...">
+                    <button id="send-button">Send</button>
                 </div>
+                <input type="hidden" id="squad-id" value="squad-1">
+                <div id="connectionStatus" class="connection-status">Connecting...</div>
             </div>
 
             <div class="video-call-section">
@@ -2915,7 +2906,8 @@
                 console.log('Initializing socket connection...');
                 
                 // Connect to Socket.IO server with better error handling and reconnection logic
-                socket = io(window.location.origin, {
+                if (typeof window.socket === 'undefined') {
+                  window.socket = io(window.location.origin, {
                     reconnection: true,
                     reconnectionAttempts: 10,
                     reconnectionDelay: 1000,
@@ -2923,7 +2915,9 @@
                     timeout: 20000,
                     transports: ['websocket', 'polling'],
                     forceNew: true
-                });
+                  });
+                }
+                socket = window.socket;
                 
                 // Connection event handlers
                 socket.on('connect', () => {
