@@ -14,149 +14,66 @@ document.addEventListener('DOMContentLoaded', () => {
   // Rest of your code...
 });
 
-// Update socket connection to prioritize polling
-if (typeof window.socket === 'undefined') {
-  window.socket = io(window.location.origin, {
-    transports: ['polling', 'websocket'], // Prioritize polling over websockets
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000
-  });
-} else {
-  // Use the existing socket
-  const socket = window.socket;
-}
-
-// Add better error handling
-socket.on('connect_error', (error) => {
-  console.error('Socket connection error:', error);
-  const connectionStatus = document.getElementById('connectionStatus');
-  if (connectionStatus) {
-    connectionStatus.textContent = 'Connection Error';
-    connectionStatus.className = 'connection-status error';
-  }
+// Initialize Socket.IO with better error handling and reconnection
+const socket = io(window.location.origin, {
+  path: '/socket.io',
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  timeout: 20000
 });
 
-// Modify this line to ensure you're getting the squad ID correctly
+// Get current user info
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+const currentUsername = currentUser.username || 'Anonymous';
+
+// Get squad ID from various possible sources
 const squadId = document.getElementById('squad-id')?.value || 
                 document.querySelector('[data-squad-id]')?.dataset.squadId || 
-                new URLSearchParams(window.location.search).get('squadId') || 
-                window.location.pathname.split('/').pop();
+                new URLSearchParams(window.location.search).get('squadId');
 
-// Add debugging to check if squadId is being found
-console.log('Squad ID:', squadId);
-
-// Add a fallback mechanism for when Socket.io fails
-let socketConnected = false;
-
-// Join the squad room when the page loads
-socket.on('connect', () => {
-  console.log('Connected to socket server');
-  socketConnected = true;
-  
-  // Join the squad room
-  socket.emit('join-squad-room', squadId);
-});
-
-// Function to send message with fallback
-function sendSquadMessage() {
-  const messageInput = document.getElementById('message-input');
-  if (!messageInput) return;
-  
-  const message = messageInput.value.trim();
-  
-  if (message) {
-    const messageData = {
-      squadId: squadId,
-      message: message,
-      sender: currentUsername,
-      timestamp: new Date().toISOString()
-    };
-    
-    if (socketConnected) {
-      // Send via Socket.io if connected
-      socket.emit('squad-message', messageData);
-    } else {
-      // Fallback to REST API if Socket.io is not connected
-      fetch('/api/squad-messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(messageData)
-      })
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to send message');
-        return response.json();
-      })
-      .then(data => {
-        console.log('Message sent via REST API:', data);
-        // Display the message locally
-        displayMessage(messageData);
-      })
-      .catch(error => {
-        console.error('Error sending message:', error);
-        alert('Failed to send message. Please try again.');
-      });
-    }
-    
-    messageInput.value = '';
-  }
+if (!squadId) {
+  console.error('No squad ID found');
 }
 
-// Listen for incoming messages
+// Connection event handlers
+socket.on('connect', () => {
+  console.log('Connected to server');
+  updateConnectionStatus('Connected', 'online');
+  
+  // Join squad room
+  if (squadId) {
+    socket.emit('join-squad-room', squadId);
+  }
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Connection error:', error);
+  updateConnectionStatus('Connection Error', 'error');
+});
+
+socket.on('disconnect', () => {
+  console.log('Disconnected from server');
+  updateConnectionStatus('Disconnected', 'offline');
+});
+
+socket.on('error', (error) => {
+  console.error('Socket error:', error);
+  updateConnectionStatus(error.message, 'error');
+});
+
+// Message handlers
 socket.on('squad-message', (data) => {
   console.log('Received message:', data);
   displayMessage(data);
 });
 
-// Display message in the chat area
-function displayMessage(data) {
-  const chatMessages = document.getElementById('chat-messages');
-  const messageElement = document.createElement('div');
-  messageElement.className = 'message';
-  
-  // Determine if this is the current user's message
-  const isCurrentUser = data.sender === currentUsername;
-  messageElement.classList.add(isCurrentUser ? 'my-message' : 'other-message');
-  
-  messageElement.innerHTML = `
-    <div class="message-header">
-      <span class="sender">${data.sender}</span>
-      <span class="timestamp">${new Date(data.timestamp).toLocaleTimeString()}</span>
-    </div>
-    <div class="message-body">${data.message}</div>
-  `;
-  
-  chatMessages.appendChild(messageElement);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Add event listener to send button if it exists
-const sendButton = document.getElementById('send-button');
-if (sendButton) {
-  sendButton.addEventListener('click', sendSquadMessage);
-}
-
-// Add event listener to input for Enter key if it exists
-const messageInput = document.getElementById('message-input');
-if (messageInput) {
-  messageInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      sendSquadMessage();
-    }
-  });
-}
-
-// Add this to your existing code
 socket.on('previous-messages', (messages) => {
   console.log('Received previous messages:', messages);
-  
-  // Clear existing messages
   const chatMessages = document.getElementById('chat-messages');
   chatMessages.innerHTML = '';
   
-  // Display each message
   messages.forEach(msg => {
     displayMessage({
       squadId: msg.squadId,
@@ -165,4 +82,71 @@ socket.on('previous-messages', (messages) => {
       timestamp: msg.timestamp
     });
   });
+});
+
+// Send message function
+function sendSquadMessage() {
+  const messageInput = document.getElementById('message-input');
+  if (!messageInput || !squadId) return;
+  
+  const message = messageInput.value.trim();
+  if (!message) return;
+  
+  const messageData = {
+    squadId: squadId,
+    message: message,
+    sender: currentUsername,
+    senderId: currentUser._id,
+    timestamp: new Date().toISOString()
+  };
+  
+  socket.emit('squad-message', messageData);
+  messageInput.value = '';
+}
+
+// Update connection status UI
+function updateConnectionStatus(message, status) {
+  const statusElement = document.getElementById('connectionStatus');
+  if (statusElement) {
+    statusElement.textContent = message;
+    statusElement.className = `connection-status ${status}`;
+  }
+}
+
+// Display message in chat
+function displayMessage(data) {
+  const chatMessages = document.getElementById('chat-messages');
+  if (!chatMessages) return;
+  
+  const messageElement = document.createElement('div');
+  messageElement.className = `message ${data.sender === currentUsername ? 'sent' : 'received'}`;
+  
+  const time = new Date(data.timestamp).toLocaleTimeString();
+  
+  messageElement.innerHTML = `
+    ${data.sender !== currentUsername ? `<div class="message-sender">${data.sender}</div>` : ''}
+    <div class="message-content">${data.message}</div>
+    <div class="message-time">${time}</div>
+  `;
+  
+  chatMessages.appendChild(messageElement);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  const sendButton = document.getElementById('send-button');
+  if (sendButton) {
+    sendButton.addEventListener('click', sendSquadMessage);
+  }
+  
+  const messageInput = document.getElementById('message-input');
+  if (messageInput) {
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendSquadMessage();
+      }
+    });
+  }
 }); 
