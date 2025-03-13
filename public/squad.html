@@ -1100,13 +1100,24 @@
 
 
             <div class="chat-container">
-                <div id="chat-messages" class="chat-messages"></div>
+                <div class="chat-header">
+                    <div class="section-title">
+                        <i class="fas fa-comments"></i>
+                        Squad Chat
+                    </div>
+                    <div id="connectionStatus" class="connection-status">Connecting...</div>
+                </div>
+                <div id="chat-messages" class="chat-messages">
+                    <!-- Messages will be populated here -->
+                    <div class="message system">
+                        <div class="message-content">Welcome to your squad chat! Messages will appear here.</div>
+                    </div>
+                </div>
                 <div class="chat-input">
                     <input type="text" id="message-input" placeholder="Type your message...">
                     <button id="send-button">Send</button>
                 </div>
                 <input type="hidden" id="squad-id" value="squad-1">
-                <div id="connectionStatus" class="connection-status">Connecting...</div>
             </div>
 
             <div class="video-call-section">
