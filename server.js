@@ -15,22 +15,82 @@ const SquadChat = require('./models/SquadChat');
 const app = express();
 const server = http.createServer(app);
 
-// Add this near the top of your file
-const socketIoOptions = {
+// Initialize Socket.IO with proper configuration
+const io = require('socket.io')(server, {
   cors: {
-    origin: "*",
+    origin: "*",  // In production, change this to your frontend URL
     methods: ["GET", "POST"],
     credentials: true
   },
-  transports: ['polling', 'websocket'],
   path: '/socket.io/',
-  allowEIO3: true, // Allow Engine.IO 3 compatibility
-  pingTimeout: 60000, // Increase ping timeout
-  pingInterval: 25000 // Increase ping interval
-};
+  transports: ['polling', 'websocket']
+});
 
-// Initialize Socket.io with these options
-const io = require('socket.io')(server, socketIoOptions);
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  // Handle joining squad room
+  socket.on('join-squad', async (squadId) => {
+    try {
+      if (!squadId) {
+        throw new Error('Squad ID is required');
+      }
+
+      const roomName = `squad_${squadId}`;
+      socket.join(roomName);
+      console.log(`Socket ${socket.id} joined room: ${roomName}`);
+
+      // Load previous messages
+      const messages = await SquadChat.find({ squadId })
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .lean();
+
+      socket.emit('chat-history', messages.reverse());
+    } catch (error) {
+      console.error('Error joining squad:', error);
+      socket.emit('chat-error', { message: error.message });
+    }
+  });
+
+  // Handle chat messages
+  socket.on('chat-message', async (data) => {
+    try {
+      if (!data.squadId || !data.message) {
+        throw new Error('Invalid message data');
+      }
+
+      const message = new SquadChat({
+        squadId: data.squadId,
+        sender: data.senderId,
+        senderName: data.senderName,
+        content: data.message,
+        timestamp: new Date()
+      });
+
+      await message.save();
+
+      // Broadcast to room
+      io.to(`squad_${data.squadId}`).emit('new-message', {
+        id: message._id,
+        squadId: message.squadId,
+        sender: message.sender,
+        senderName: message.senderName,
+        content: message.content,
+        timestamp: message.timestamp
+      });
+
+    } catch (error) {
+      console.error('Error handling message:', error);
+      socket.emit('chat-error', { message: 'Failed to send message' });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
 
 // Update CORS configuration
 const corsOptions = {
@@ -410,90 +470,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Update the Socket.IO initialization with better error handling
-const io = require('socket.io')(server, {
-  cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app']
-      : ['http://localhost:5000', 'http://localhost:3000'],
-    methods: ["GET", "POST"],
-    credentials: true
-  },
-  path: '/socket.io',
-  transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
-
-// Add Socket.IO error handling
-io.engine.on("connection_error", (err) => {
-  console.log("Connection error:", err);
-});
-
-// Improve Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
-  
-  socket.on('join-squad-room', async (squadId) => {
-    try {
-      socket.join(`squad-${squadId}`);
-      console.log(`User ${socket.id} joined squad room: squad-${squadId}`);
-      
-      // Fetch recent messages for this squad
-      const recentMessages = await SquadChat.find({ squadId })
-        .sort({ timestamp: -1 })
-        .limit(50)
-        .populate('sender', 'username')
-        .lean();
-      
-      // Send previous messages to the client
-      socket.emit('previous-messages', recentMessages.reverse());
-    } catch (error) {
-      console.error('Error in join-squad-room:', error);
-      socket.emit('error', { message: 'Failed to join squad room' });
-    }
-  });
-  
-  socket.on('squad-message', async (data) => {
-    try {
-      console.log('Received squad message:', data);
-      
-      // Validate message data
-      if (!data.squadId || !data.message) {
-        throw new Error('Invalid message data');
-      }
-      
-      // Save message to database
-      const chatMessage = new SquadChat({
-        squadId: data.squadId,
-        sender: data.senderId,
-        senderName: data.sender,
-        content: data.message,
-        timestamp: new Date()
-      });
-      
-      await chatMessage.save();
-      
-      // Broadcast to all clients in the room
-      io.to(`squad-${data.squadId}`).emit('squad-message', {
-        ...data,
-        timestamp: chatMessage.timestamp
-      });
-    } catch (error) {
-      console.error('Error handling squad message:', error);
-      socket.emit('error', { message: 'Failed to send message' });
-    }
-  });
-  
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-  
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
-  });
-});
-
 // Update the GET endpoint to retrieve messages with "since" parameter
 app.get('/api/squad-messages', async (req, res) => {
   try {
@@ -576,10 +552,12 @@ app.post('/api/squad-messages', async (req, res) => {
     
     // Emit to socket clients if needed
     if (io) {
-      io.to(`squad-${squadId}`).emit('squad-message', {
+      io.to(`squad_${squadId}`).emit('new-message', {
+        id: chatMessage._id,
         squadId,
         message,
         sender,
+        senderName: chatMessage.senderName,
         timestamp: chatMessage.timestamp
       });
     }
