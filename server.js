@@ -49,7 +49,19 @@ app.options('*', cors(corsOptions));
 
 // Other middleware
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static('public', {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    } else if (path.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html');
+    } else if (path.endsWith('.json')) {
+      res.setHeader('Content-Type', 'application/json');
+    }
+  }
+}));
 
 // Add better error logging
 app.use((req, res, next) => {
@@ -274,6 +286,79 @@ app.get('/', (req, res) => {
 // HTML file handler
 app.get('/*.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', req.path));
+});
+
+// Get user by email
+app.get('/api/user-by-email', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user by email:', error);
+    res.status(500).json({ error: 'Failed to fetch user', details: error.message });
+  }
+});
+
+// Get friends by user ID
+app.get('/api/friends', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get friends (assuming you have a connections array in your User model)
+    const friends = await User.find({ _id: { $in: user.connections || [] } });
+    
+    res.json(friends);
+  } catch (error) {
+    console.error('Error fetching friends:', error);
+    res.status(500).json({ error: 'Failed to fetch friends', details: error.message });
+  }
+});
+
+// Search users
+app.get('/api/search-users', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { term } = req.query;
+    
+    if (!term) {
+      return res.status(400).json({ error: 'Search term is required' });
+    }
+    
+    const users = await User.find({
+      $or: [
+        { username: { $regex: term, $options: 'i' } },
+        { fullName: { $regex: term, $options: 'i' } },
+        { email: { $regex: term, $options: 'i' } }
+      ]
+    }).limit(10);
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ error: 'Failed to search users', details: error.message });
+  }
 });
 
 // Update your catch-all route to only handle HTML requests, not API requests
