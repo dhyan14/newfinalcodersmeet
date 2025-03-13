@@ -23,7 +23,10 @@ const socketIoOptions = {
     credentials: true
   },
   transports: ['websocket', 'polling'],
-  path: '/socket.io/'
+  path: '/socket.io/',
+  allowEIO3: true, // Allow Engine.IO 3 compatibility
+  pingTimeout: 60000, // Increase ping timeout
+  pingInterval: 25000 // Increase ping interval
 };
 
 // Initialize Socket.io with these options
@@ -351,6 +354,76 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
+});
+
+// Add REST API endpoint for squad messages
+app.post('/api/squad-messages', async (req, res) => {
+  try {
+    await connectToDatabase();
+    
+    const { squadId, message, sender, senderId, timestamp } = req.body;
+    
+    // Create new message
+    const chatMessage = new SquadChat({
+      squadId: squadId,
+      sender: senderId || 'anonymous',
+      senderName: sender,
+      content: message,
+      timestamp: timestamp || new Date()
+    });
+    
+    // Save to database
+    await chatMessage.save();
+    
+    // Emit to socket clients if needed
+    if (io) {
+      io.to(`squad-${squadId}`).emit('squad-message', {
+        squadId,
+        message,
+        sender,
+        timestamp: chatMessage.timestamp
+      });
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: 'Message sent successfully',
+      data: chatMessage
+    });
+  } catch (error) {
+    console.error('Error saving message:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send message',
+      error: error.message
+    });
+  }
+});
+
+// Add GET endpoint to retrieve messages
+app.get('/api/squad-messages', async (req, res) => {
+  try {
+    await connectToDatabase();
+    
+    const { squadId } = req.query;
+    const query = squadId ? { squadId } : {};
+    
+    // Get recent messages
+    const messages = await SquadChat.find(query)
+      .sort({ timestamp: -1 })
+      .limit(50)
+      .populate('sender', 'username fullName')
+      .lean();
+    
+    res.json(messages.reverse());
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch messages',
+      error: error.message
+    });
+  }
 });
 
 // For local development
