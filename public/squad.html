@@ -1248,49 +1248,74 @@
     </div>
 
     <!-- Add this near the end of your file, before the closing </body> tag -->
-    <script src="/js/polling-chat.js"></script>
+    <script src="/js/fallback-chat.js"></script>
 
-    <!-- Remove or comment out the Socket.io initialization code -->
     <script>
-      // Comment out or remove the Socket.io initialization
-      /*
-      if (typeof window.socket === 'undefined') {
-        window.socket = io(window.location.origin, {
-          reconnection: true,
-          reconnectionAttempts: 10,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          timeout: 20000,
-          transports: ['polling', 'websocket'],
-          forceNew: true
-        });
-      }
-      socket = window.socket;
-      */
+      // Check if we need to use the fallback chat system
+      let usingFallback = false;
       
-      // The rest of your script...
-
-      // Update any existing references to sendSquadMessage
+      // Function to test API availability
+      function testApiAndSocketAvailability() {
+        // First try the API
+        fetch('/api/server-info')
+          .then(response => {
+            if (!response.ok) throw new Error('API not available');
+            return response.json();
+          })
+          .then(data => {
+            console.log('Server info:', data);
+            // API is available, now check if Socket.io is working
+            if (typeof io !== 'undefined' && window.socket && window.socket.connected) {
+              console.log('Socket.io is connected, using real-time chat');
+              // Socket.io is working, no need for fallback
+              usingFallback = false;
+            } else {
+              console.log('Socket.io not connected, using fallback chat');
+              // Socket.io is not working, use fallback
+              usingFallback = true;
+              if (window.FallbackChat) {
+                window.FallbackChat.startPolling();
+              }
+            }
+          })
+          .catch(error => {
+            console.warn('API test failed:', error);
+            // API is not available, use fallback
+            usingFallback = true;
+            if (window.FallbackChat) {
+              window.FallbackChat.useLocalStorage(true);
+              window.FallbackChat.startPolling();
+            }
+          });
+      }
+      
+      // Run the test when the page loads
+      window.addEventListener('load', testApiAndSocketAvailability);
+      
+      // Update the send button to use the appropriate chat system
       document.getElementById('send-button')?.addEventListener('click', function() {
-        // Try both methods to ensure compatibility
-        if (window.PollingChat && window.PollingChat.sendMessage) {
-          window.PollingChat.sendMessage();
+        if (usingFallback && window.FallbackChat) {
+          window.FallbackChat.sendMessage();
         } else if (window.sendSquadMessage) {
           window.sendSquadMessage();
+        } else if (window.PollingChat) {
+          window.PollingChat.sendMessage();
         }
       });
-
-      // Add this script to ensure we have a user object
-      if (!localStorage.getItem('user')) {
-        const testUser = {
-          _id: 'test-user-' + Math.random().toString(36).substring(2, 9),
-          username: 'TestUser',
-          fullName: 'Test User',
-          email: 'test@example.com'
-        };
-        localStorage.setItem('user', JSON.stringify(testUser));
-        console.log('Created test user:', testUser);
-      }
+      
+      // Also handle Enter key in the input field
+      document.getElementById('message-input')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          if (usingFallback && window.FallbackChat) {
+            window.FallbackChat.sendMessage();
+          } else if (window.sendSquadMessage) {
+            window.sendSquadMessage();
+          } else if (window.PollingChat) {
+            window.PollingChat.sendMessage();
+          }
+          e.preventDefault();
+        }
+      });
     </script>
 </body>
 </html> 
