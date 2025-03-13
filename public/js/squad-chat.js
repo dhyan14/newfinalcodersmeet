@@ -14,139 +14,156 @@ document.addEventListener('DOMContentLoaded', () => {
   // Rest of your code...
 });
 
-// Initialize Socket.IO with better error handling and reconnection
-const socket = io(window.location.origin, {
-  path: '/socket.io',
-  transports: ['websocket', 'polling'],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  timeout: 20000
-});
-
-// Get current user info
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-const currentUsername = currentUser.username || 'Anonymous';
-
-// Get squad ID from various possible sources
-const squadId = document.getElementById('squad-id')?.value || 
-                document.querySelector('[data-squad-id]')?.dataset.squadId || 
-                new URLSearchParams(window.location.search).get('squadId');
-
-if (!squadId) {
-  console.error('No squad ID found');
-}
-
-// Connection event handlers
-socket.on('connect', () => {
-  console.log('Connected to server');
-  updateConnectionStatus('Connected', 'online');
-  
-  // Join squad room
-  if (squadId) {
-    socket.emit('join-squad-room', squadId);
+// Squad Chat Implementation
+class SquadChat {
+  constructor() {
+    this.socket = null;
+    this.squadId = null;
+    this.user = null;
+    this.messageContainer = document.getElementById('chat-messages');
+    this.messageInput = document.getElementById('message-input');
+    this.sendButton = document.getElementById('send-button');
+    this.statusElement = document.getElementById('chat-status');
   }
-});
 
-socket.on('connect_error', (error) => {
-  console.error('Connection error:', error);
-  updateConnectionStatus('Connection Error', 'error');
-});
+  // Initialize chat
+  init() {
+    // Get user data
+    const userData = localStorage.getItem('user');
+    if (!userData) {
+      this.showError('User not logged in');
+      return false;
+    }
+    this.user = JSON.parse(userData);
 
-socket.on('disconnect', () => {
-  console.log('Disconnected from server');
-  updateConnectionStatus('Disconnected', 'offline');
-});
+    // Get squad ID
+    this.squadId = this.getSquadId();
+    if (!this.squadId) {
+      this.showError('No squad ID found');
+      return false;
+    }
 
-socket.on('error', (error) => {
-  console.error('Socket error:', error);
-  updateConnectionStatus(error.message, 'error');
-});
+    // Initialize socket
+    this.initializeSocket();
+    this.setupEventListeners();
+    return true;
+  }
 
-// Message handlers
-socket.on('squad-message', (data) => {
-  console.log('Received message:', data);
-  displayMessage(data);
-});
+  // Get squad ID from various possible sources
+  getSquadId() {
+    return document.getElementById('squad-id')?.value || 
+           document.querySelector('[data-squad-id]')?.dataset.squadId || 
+           new URLSearchParams(window.location.search).get('squadId');
+  }
 
-socket.on('previous-messages', (messages) => {
-  console.log('Received previous messages:', messages);
-  const chatMessages = document.getElementById('chat-messages');
-  chatMessages.innerHTML = '';
-  
-  messages.forEach(msg => {
-    displayMessage({
-      squadId: msg.squadId,
-      message: msg.content,
-      sender: msg.senderName,
-      timestamp: msg.timestamp
+  // Initialize Socket.IO connection
+  initializeSocket() {
+    this.socket = io({
+      path: '/socket.io/',
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
     });
-  });
-});
 
-// Send message function
-function sendSquadMessage() {
-  const messageInput = document.getElementById('message-input');
-  if (!messageInput || !squadId) return;
-  
-  const message = messageInput.value.trim();
-  if (!message) return;
-  
-  const messageData = {
-    squadId: squadId,
-    message: message,
-    sender: currentUsername,
-    senderId: currentUser._id,
-    timestamp: new Date().toISOString()
-  };
-  
-  socket.emit('squad-message', messageData);
-  messageInput.value = '';
-}
+    // Socket event handlers
+    this.socket.on('connect', () => {
+      console.log('Connected to chat server');
+      this.updateStatus('Connected', 'success');
+      this.socket.emit('join-squad', this.squadId);
+    });
 
-// Update connection status UI
-function updateConnectionStatus(message, status) {
-  const statusElement = document.getElementById('connectionStatus');
-  if (statusElement) {
-    statusElement.textContent = message;
-    statusElement.className = `connection-status ${status}`;
+    this.socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      this.updateStatus('Connection error', 'error');
+    });
+
+    this.socket.on('chat-history', (messages) => {
+      this.displayMessages(messages);
+    });
+
+    this.socket.on('new-message', (message) => {
+      this.displayMessage(message);
+    });
+
+    this.socket.on('chat-error', (error) => {
+      this.showError(error.message);
+    });
   }
-}
 
-// Display message in chat
-function displayMessage(data) {
-  const chatMessages = document.getElementById('chat-messages');
-  if (!chatMessages) return;
-  
-  const messageElement = document.createElement('div');
-  messageElement.className = `message ${data.sender === currentUsername ? 'sent' : 'received'}`;
-  
-  const time = new Date(data.timestamp).toLocaleTimeString();
-  
-  messageElement.innerHTML = `
-    ${data.sender !== currentUsername ? `<div class="message-sender">${data.sender}</div>` : ''}
-    <div class="message-content">${data.message}</div>
-    <div class="message-time">${time}</div>
-  `;
-  
-  chatMessages.appendChild(messageElement);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Event listeners
-document.addEventListener('DOMContentLoaded', () => {
-  const sendButton = document.getElementById('send-button');
-  if (sendButton) {
-    sendButton.addEventListener('click', sendSquadMessage);
-  }
-  
-  const messageInput = document.getElementById('message-input');
-  if (messageInput) {
-    messageInput.addEventListener('keypress', (e) => {
+  // Set up UI event listeners
+  setupEventListeners() {
+    this.sendButton?.addEventListener('click', () => this.sendMessage());
+    this.messageInput?.addEventListener('keypress', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendSquadMessage();
+        this.sendMessage();
       }
     });
+  }
+
+  // Send a message
+  sendMessage() {
+    if (!this.messageInput || !this.socket) return;
+
+    const message = this.messageInput.value.trim();
+    if (!message) return;
+
+    this.socket.emit('chat-message', {
+      squadId: this.squadId,
+      senderId: this.user._id,
+      senderName: this.user.username,
+      message: message
+    });
+
+    this.messageInput.value = '';
+  }
+
+  // Display multiple messages (for history)
+  displayMessages(messages) {
+    if (!this.messageContainer) return;
+    this.messageContainer.innerHTML = '';
+    messages.forEach(msg => this.displayMessage(msg));
+  }
+
+  // Display a single message
+  displayMessage(message) {
+    if (!this.messageContainer) return;
+
+    const messageElement = document.createElement('div');
+    messageElement.className = `message ${message.senderName === this.user.username ? 'sent' : 'received'}`;
+    
+    const time = new Date(message.timestamp).toLocaleTimeString();
+    
+    messageElement.innerHTML = `
+      ${message.senderName !== this.user.username ? `<div class="message-sender">${message.senderName}</div>` : ''}
+      <div class="message-content">${message.content || message.message}</div>
+      <div class="message-time">${time}</div>
+    `;
+
+    this.messageContainer.appendChild(messageElement);
+    this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+  }
+
+  // Update connection status
+  updateStatus(message, type) {
+    if (this.statusElement) {
+      this.statusElement.textContent = message;
+      this.statusElement.className = `chat-status ${type}`;
+    }
+  }
+
+  // Show error message
+  showError(message) {
+    console.error(message);
+    this.updateStatus(message, 'error');
+  }
+}
+
+// Initialize chat when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  const chat = new SquadChat();
+  if (!chat.init()) {
+    console.error('Failed to initialize chat');
   }
 }); 
