@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
 const http = require('http');
-const io = require('socket.io');
 
 // Import models
 const User = require('./models/User');
@@ -12,8 +11,17 @@ const Message = require('./models/Message');
 const FriendRequest = require('./models/FriendRequest');
 const SquadChat = require('./models/SquadChat');
 
+// Create Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
+
+// Initialize Socket.io (only once)
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 // Update CORS configuration
 const corsOptions = {
@@ -285,14 +293,6 @@ app.use((req, res) => {
     });
 });
 
-// Check if Socket.io is properly initialized
-const io = require('socket.io')(server, {
-  cors: {
-    origin: "*", // This allows connections from any origin
-    methods: ["GET", "POST"]
-  }
-});
-
 // Set up Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
@@ -347,5 +347,12 @@ io.on('connection', (socket) => {
   });
 });
 
-// Export the app
-module.exports = server; 
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  server.listen(process.env.PORT || 3000, () => {
+    console.log(`Server running on port ${process.env.PORT || 3000}`);
+  });
+}
+
+// For Vercel, export the Express app
+module.exports = app; 
