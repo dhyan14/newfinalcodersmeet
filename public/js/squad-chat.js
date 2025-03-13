@@ -10,8 +10,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Rest of your code...
 });
 
-// Initialize socket connection
-const socket = io();
+// Initialize socket connection with dynamic URL
+const socket = io(window.location.origin, {
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000
+});
+
+// Add better error handling
+socket.on('connect_error', (error) => {
+  console.error('Socket connection error:', error);
+  document.getElementById('connectionStatus').textContent = 'Connection Error';
+  document.getElementById('connectionStatus').className = 'connection-status error';
+});
 
 // Modify this line to ensure you're getting the squad ID correctly
 const squadId = document.getElementById('squad-id')?.value || 
