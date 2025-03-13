@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    h1, h2 { color: #333; }
+    button { padding: 10px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; margin-bottom: 10px; }
+    button:hover { background: #45a049; }
+    pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    .error { color: #d32f2f; }
+    .success { color: #388e3c; }
+    input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+    textarea { height: 100px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>API Test Page</h1>
+    
+    <div class="card">
+      <h2>GET /api/squad-messages</h2>
+      <div>
+        <label for="squadId">Squad ID:</label>
+        <input type="text" id="squadId" value="test-room">
+      </div>
+      <button onclick="testGetMessages()">Test GET Messages</button>
+      <div id="getMessagesResult"></div>
+    </div>
+    
+    <div class="card">
+      <h2>POST /api/squad-messages</h2>
+      <div>
+        <label for="postSquadId">Squad ID:</label>
+        <input type="text" id="postSquadId" value="test-room">
+      </div>
+      <div>
+        <label for="messageContent">Message:</label>
+        <input type="text" id="messageContent" value="Test message from API test page">
+      </div>
+      <div>
+        <label for="senderName">Sender Name:</label>
+        <input type="text" id="senderName" value="API Tester">
+      </div>
+      <button onclick="testPostMessage()">Test POST Message</button>
+      <div id="postMessageResult"></div>
+    </div>
+    
+    <div class="card">
+      <h2>Server Info</h2>
+      <button onclick="testServerInfo()">Get Server Info</button>
+      <div id="serverInfoResult"></div>
+    </div>
+  </div>
+
+  <script>
+    // Test GET /api/squad-messages
+    function testGetMessages() {
+      const resultDiv = document.getElementById('getMessagesResult');
+      const squadId = document.getElementById('squadId').value;
+      
+      resultDiv.innerHTML = '<p>Loading...</p>';
+      
+      fetch(`/api/squad-messages?squadId=${encodeURIComponent(squadId)}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          resultDiv.innerHTML = `
+            <p class="success">Success! Received ${data.length} messages</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        })
+        .catch(error => {
+          resultDiv.innerHTML = `
+            <p class="error">Error: ${error.message}</p>
+          `;
+        });
+    }
+    
+    // Test POST /api/squad-messages
+    function testPostMessage() {
+      const resultDiv = document.getElementById('postMessageResult');
+      const squadId = document.getElementById('postSquadId').value;
+      const message = document.getElementById('messageContent').value;
+      const sender = document.getElementById('senderName').value;
+      
+      resultDiv.innerHTML = '<p>Sending...</p>';
+      
+      fetch('/api/squad-messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          squadId,
+          message,
+          sender,
+          timestamp: new Date().toISOString()
+        })
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          resultDiv.innerHTML = `
+            <p class="success">Message sent successfully!</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        })
+        .catch(error => {
+          resultDiv.innerHTML = `
+            <p class="error">Error: ${error.message}</p>
+          `;
+        });
+    }
+    
+    // Test server info
+    function testServerInfo() {
+      const resultDiv = document.getElementById('serverInfoResult');
+      
+      resultDiv.innerHTML = '<p>Loading...</p>';
+      
+      fetch('/api/server-info')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          resultDiv.innerHTML = `
+            <p class="success">Server info retrieved!</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        })
+        .catch(error => {
+          resultDiv.innerHTML = `
+            <p class="error">Error: ${error.message}</p>
+          `;
+        });
+    }
+  </script>
+</body>
+</html> 
