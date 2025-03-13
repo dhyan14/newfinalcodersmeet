@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Chat Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    #messages { height: 300px; border: 1px solid #ccc; overflow-y: auto; margin-bottom: 10px; padding: 10px; }
+    #form { display: flex; }
+    #input { flex-grow: 1; padding: 10px; }
+    button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+    .status { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Simple Chat Test</h1>
+  <div class="status" id="status">Disconnected</div>
+  <div id="messages"></div>
+  <form id="form">
+    <input id="input" autocomplete="off" placeholder="Type a message..."/>
+    <button>Send</button>
+  </form>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Simple chat client
+    const socket = io({
+      transports: ['polling', 'websocket'],
+      reconnection: true
+    });
+    
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+    const status = document.getElementById('status');
+    
+    // Connection events
+    socket.on('connect', () => {
+      status.textContent = 'Connected';
+      status.style.color = 'green';
+      addMessage('System', 'Connected to server');
+      
+      // Join a test room
+      socket.emit('join-squad-room', 'test-room');
+    });
+    
+    socket.on('connect_error', (error) => {
+      status.textContent = 'Connection Error: ' + error.message;
+      status.style.color = 'red';
+      addMessage('System', 'Connection error: ' + error.message);
+    });
+    
+    socket.on('disconnect', () => {
+      status.textContent = 'Disconnected';
+      status.style.color = 'red';
+      addMessage('System', 'Disconnected from server');
+    });
+    
+    // Message events
+    socket.on('squad-message', (data) => {
+      addMessage(data.sender, data.message);
+    });
+    
+    // Send message
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value) {
+        const message = {
+          squadId: 'test-room',
+          message: input.value,
+          sender: 'User-' + socket.id.substr(0, 5),
+          timestamp: new Date().toISOString()
+        };
+        
+        socket.emit('squad-message', message);
+        input.value = '';
+      }
+    });
+    
+    // Helper function to add messages to the UI
+    function addMessage(sender, text) {
+      const item = document.createElement('div');
+      item.textContent = `${sender}: ${text}`;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    }
+  </script>
+</body>
+</html> 
