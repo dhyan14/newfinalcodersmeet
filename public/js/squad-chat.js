@@ -1,3 +1,7 @@
+// Make sure this file is being served with the correct MIME type
+// Add a comment at the top to ensure it's valid JavaScript
+// JavaScript for Squad Chat functionality
+
 // Add this at the beginning of your file
 let currentUsername;
 
@@ -10,19 +14,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Rest of your code...
 });
 
-// Initialize socket connection with dynamic URL
-const socket = io(window.location.origin, {
-  transports: ['websocket', 'polling'],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000
-});
+// Check if socket is already defined before creating a new one
+if (typeof window.socket === 'undefined') {
+  window.socket = io(window.location.origin, {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
+} else {
+  // Use the existing socket
+  const socket = window.socket;
+}
 
 // Add better error handling
 socket.on('connect_error', (error) => {
   console.error('Socket connection error:', error);
-  document.getElementById('connectionStatus').textContent = 'Connection Error';
-  document.getElementById('connectionStatus').className = 'connection-status error';
+  const connectionStatus = document.getElementById('connectionStatus');
+  if (connectionStatus) {
+    connectionStatus.textContent = 'Connection Error';
+    connectionStatus.className = 'connection-status error';
+  }
 });
 
 // Modify this line to ensure you're getting the squad ID correctly
@@ -34,26 +46,60 @@ const squadId = document.getElementById('squad-id')?.value ||
 // Add debugging to check if squadId is being found
 console.log('Squad ID:', squadId);
 
+// Add a fallback mechanism for when Socket.io fails
+let socketConnected = false;
+
 // Join the squad room when the page loads
 socket.on('connect', () => {
   console.log('Connected to socket server');
+  socketConnected = true;
+  
+  // Join the squad room
   socket.emit('join-squad-room', squadId);
 });
 
-// Send message function
+// Function to send message with fallback
 function sendSquadMessage() {
   const messageInput = document.getElementById('message-input');
+  if (!messageInput) return;
+  
   const message = messageInput.value.trim();
   
   if (message) {
     const messageData = {
       squadId: squadId,
       message: message,
-      sender: currentUsername, // Make sure this variable is defined with the current user's name
+      sender: currentUsername,
       timestamp: new Date().toISOString()
     };
     
-    socket.emit('squad-message', messageData);
+    if (socketConnected) {
+      // Send via Socket.io if connected
+      socket.emit('squad-message', messageData);
+    } else {
+      // Fallback to REST API if Socket.io is not connected
+      fetch('/api/squad-messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(messageData)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to send message');
+        return response.json();
+      })
+      .then(data => {
+        console.log('Message sent via REST API:', data);
+        // Display the message locally
+        displayMessage(messageData);
+      })
+      .catch(error => {
+        console.error('Error sending message:', error);
+        alert('Failed to send message. Please try again.');
+      });
+    }
+    
     messageInput.value = '';
   }
 }
@@ -86,15 +132,21 @@ function displayMessage(data) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Add event listener to send button
-document.getElementById('send-button').addEventListener('click', sendSquadMessage);
+// Add event listener to send button if it exists
+const sendButton = document.getElementById('send-button');
+if (sendButton) {
+  sendButton.addEventListener('click', sendSquadMessage);
+}
 
-// Add event listener to input for Enter key
-document.getElementById('message-input').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    sendSquadMessage();
-  }
-});
+// Add event listener to input for Enter key if it exists
+const messageInput = document.getElementById('message-input');
+if (messageInput) {
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      sendSquadMessage();
+    }
+  });
+}
 
 // Add this to your existing code
 socket.on('previous-messages', (messages) => {
