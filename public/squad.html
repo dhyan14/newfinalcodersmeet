@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/squad-chat.js"></script>
     <style>
         .squad-container {
             display: grid;
@@ -1406,7 +1408,7 @@
         function fetchFriendsForCall(participantsGrid) {
             const currentUser = JSON.parse(localStorage.getItem('user'));
             
-            fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
+            fetch(`/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
                 .then(response => {
                     if (!response.ok) throw new Error('Failed to fetch user data');
                     return response.json();
@@ -1415,7 +1417,7 @@
                     if (!userData || !userData._id) throw new Error('User ID not found');
                     
                     // Now fetch friends
-                    return fetch(`http://localhost:5000/api/friends?userId=${userData._id}`);
+                    return fetch(`/api/friends?userId=${userData._id}`);
                 })
                 .then(response => {
                     if (!response.ok) throw new Error('Failed to fetch friends');
@@ -2262,20 +2264,23 @@
                 }
                 
                 // First get the user data
-                const userResponse = await fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`);
+                const userResponse = await fetch(`/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`API returned ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Process data
+                        return data;
+                    })
+                    .catch(error => handleApiError(error, loadFallbackMembers));
                 
-                if (!userResponse.ok) {
-                    throw new Error(`API returned ${userResponse.status}: ${userResponse.statusText}`);
-                }
-                
-                const userData = await userResponse.json();
-                
-                if (!userData || !userData._id) {
+                if (!userResponse || !userResponse._id) {
                     throw new Error('User ID not found in server response');
                 }
                 
                 // Now fetch friends using the retrieved user ID
-                const friendsResponse = await fetch(`http://localhost:5000/api/friends?userId=${userData._id}`);
+                const friendsResponse = await fetch(`/api/friends?userId=${userResponse._id}`);
                 
                 if (!friendsResponse.ok) {
                     throw new Error(`API returned ${friendsResponse.status}: ${friendsResponse.statusText}`);
@@ -2286,8 +2291,8 @@
                 
                 // Create squad members array with the current user as leader
                 const squadMembers = [{
-                    fullName: userData.fullName || 'You',
-                    username: userData.username || 'you',
+                    fullName: userResponse.fullName || 'You',
+                    username: userResponse.username || 'you',
                     role: 'Squad Leader',
                     contributions: '42 commits',
                     joinedDate: '3 months ago'
@@ -2436,7 +2441,7 @@
             }
             
             // We need to fetch the user's ID from the server since it's not in localStorage
-            fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
+            fetch(`/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Failed to fetch user data');
@@ -2451,7 +2456,7 @@
                     const userId = userData._id;
                     
                     // Now fetch friends using the retrieved user ID
-                    return fetch(`http://localhost:5000/api/friends?userId=${userId}`)
+                    return fetch(`/api/friends?userId=${userId}`)
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error('Failed to fetch friends');
@@ -2552,7 +2557,7 @@
             }
             
             // Fetch squad chat messages from the server
-            fetch(`http://localhost:5000/api/squad-messages`)
+            fetch(`/api/squad-messages`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Failed to fetch chat messages');
@@ -2651,10 +2656,7 @@
             const configuration = {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                    { urls: 'stun:stun3.l.google.com:19302' },
-                    { urls: 'stun:stun4.l.google.com:19302' }
+                    { urls: 'stun:stun1.l.google.com:19302' }
                 ]
             };
             
@@ -2839,7 +2841,7 @@
             }
             
             // Search for users by name or email
-            fetch(`http://localhost:5000/api/search-users?term=${encodeURIComponent(searchTerm)}`)
+            fetch(`/api/search-users?term=${encodeURIComponent(searchTerm)}`)
                 .then(response => {
                     if (!response.ok) throw new Error('Failed to search users');
                     return response.json();
@@ -2913,7 +2915,7 @@
                 console.log('Initializing socket connection...');
                 
                 // Connect to Socket.IO server with better error handling and reconnection logic
-                socket = io('http://localhost:5000', {
+                socket = io(window.location.origin, {
                     reconnection: true,
                     reconnectionAttempts: 10,
                     reconnectionDelay: 1000,
@@ -3288,6 +3290,14 @@
                     return false; // Device is in use
                 }
                 return true; // Other errors might be permissions, which we handle separately
+            }
+        }
+
+        // Add this function to handle API errors consistently
+        function handleApiError(error, fallbackFunction) {
+            console.error('API Error:', error);
+            if (fallbackFunction && typeof fallbackFunction === 'function') {
+                fallbackFunction();
             }
         }
     </script>
