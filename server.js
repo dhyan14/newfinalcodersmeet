@@ -15,13 +15,19 @@ const SquadChat = require('./models/SquadChat');
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.io (only once)
-const io = require('socket.io')(server, {
+// Add this near the top of your file
+const socketIoOptions = {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  path: '/socket.io/'
+};
+
+// Initialize Socket.io with these options
+const io = require('socket.io')(server, socketIoOptions);
 
 // Update CORS configuration
 const corsOptions = {
