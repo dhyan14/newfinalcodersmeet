@@ -35,16 +35,24 @@
 
   // Test if the API is available
   function testApiAvailability() {
-    fetch('/api/squad-messages?squadId=' + fallbackSquadId)
+    updateConnectionStatus('Testing connection...', 'offline');
+    
+    fetch('/api/server-info')
       .then(response => {
         if (!response.ok) throw new Error(`API returned ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        console.log('Server info:', data);
         useLocalStorage = false;
+        updateConnectionStatus('Connected to server', 'online');
         console.log('API is available, using server storage');
         startPolling();
       })
       .catch(error => {
         console.warn('API is not available, using localStorage fallback:', error);
         useLocalStorage = true;
+        updateConnectionStatus('Using local storage (offline mode)', 'offline');
         startPolling();
       });
   }
@@ -292,4 +300,13 @@
     stopPolling: function() { isPolling = false; },
     useLocalStorage: function(use) { useLocalStorage = use; }
   };
+
+  // Add this function to the fallback chat implementation
+  function updateConnectionStatus(message, status) {
+    const connectionStatus = document.getElementById('connectionStatus');
+    if (connectionStatus) {
+      connectionStatus.textContent = message;
+      connectionStatus.className = `connection-status ${status}`;
+    }
+  }
 })(); 
