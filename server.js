@@ -3,6 +3,8 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
+const http = require('http');
+const io = require('socket.io');
 
 // Import models
 const User = require('./models/User');
@@ -11,6 +13,7 @@ const FriendRequest = require('./models/FriendRequest');
 const SquadChat = require('./models/SquadChat');
 
 const app = express();
+const server = http.createServer(app);
 
 // Update CORS configuration
 const corsOptions = {
@@ -282,5 +285,67 @@ app.use((req, res) => {
     });
 });
 
+// Check if Socket.io is properly initialized
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "*", // This allows connections from any origin
+    methods: ["GET", "POST"]
+  }
+});
+
+// Set up Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+  
+  // Join a specific room (squad room)
+  socket.on('join-squad-room', async (squadId) => {
+    socket.join(`squad-${squadId}`);
+    console.log(`User ${socket.id} joined squad room: squad-${squadId}`);
+    
+    try {
+      // Fetch recent messages for this squad
+      const recentMessages = await SquadChat.find({ squadId })
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .populate('sender', 'username')
+        .lean();
+      
+      // Send previous messages to the client
+      socket.emit('previous-messages', recentMessages.reverse());
+    } catch (error) {
+      console.error('Error fetching previous messages:', error);
+    }
+  });
+  
+  // Handle chat messages for squad
+  socket.on('squad-message', async (data) => {
+    console.log('Squad message received:', data);
+    
+    try {
+      // Save message to database
+      const chatMessage = new SquadChat({
+        squadId: data.squadId,
+        sender: data.senderId, // Make sure client sends this
+        senderName: data.sender,
+        content: data.message,
+        timestamp: new Date()
+      });
+      
+      await chatMessage.save();
+      console.log('Message saved to database');
+      
+      // Broadcast to all clients in the room
+      io.to(`squad-${data.squadId}`).emit('squad-message', data);
+    } catch (error) {
+      console.error('Error saving chat message:', error);
+    }
+  });
+  
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
 // Export the app
-module.exports = app; 
+module.exports = server; 
