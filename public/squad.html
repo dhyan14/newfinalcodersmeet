@@ -1269,6 +1269,28 @@
       */
       
       // The rest of your script...
+
+      // Update any existing references to sendSquadMessage
+      document.getElementById('send-button')?.addEventListener('click', function() {
+        // Try both methods to ensure compatibility
+        if (window.PollingChat && window.PollingChat.sendMessage) {
+          window.PollingChat.sendMessage();
+        } else if (window.sendSquadMessage) {
+          window.sendSquadMessage();
+        }
+      });
+
+      // Add this script to ensure we have a user object
+      if (!localStorage.getItem('user')) {
+        const testUser = {
+          _id: 'test-user-' + Math.random().toString(36).substring(2, 9),
+          username: 'TestUser',
+          fullName: 'Test User',
+          email: 'test@example.com'
+        };
+        localStorage.setItem('user', JSON.stringify(testUser));
+        console.log('Created test user:', testUser);
+      }
     </script>
 </body>
 </html> 
