@@ -1,964 +1,1375 @@
-// Form validation function
-function validateForm(formId) {
-    const form = document.getElementById(formId);
-    if (!form) return false;
-
-    const email = form.querySelector('input[type="email"]');
-    const password = form.querySelector('input[type="password"]');
-    
-    if (!email || !password) return false;
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.value)) {
-        alert('Please enter a valid email address');
-        return false;
-    }
-    
-    // Password validation
-    if (password.value.length < 6) {
-        alert('Password must be at least 6 characters long');
-        return false;
-    }
-    
-    return true;
-}
-
-// Mobile menu functionality
-function toggleMobileMenu() {
-    const mobileMenu = document.querySelector('.mobile-menu');
-    const hamburger = document.querySelector('.hamburger');
-    
-    if (mobileMenu && hamburger) {
-        mobileMenu.classList.toggle('active');
-        hamburger.classList.toggle('active');
-    }
-}
-
-// Initialize mobile menu
-document.addEventListener('DOMContentLoaded', function() {
-    // Remove this code block that adds the hamburger button
-    /*
-    const nav = document.querySelector('nav');
-    if (nav) {
-        const hamburger = document.createElement('button');
-        hamburger.className = 'hamburger';
-        hamburger.innerHTML = `
-            <span></span>
-            <span></span>
-            <span></span>
-        `;
-        hamburger.addEventListener('click', toggleMobileMenu);
-        nav.appendChild(hamburger);
-
-        // Create mobile menu
-        const mobileMenu = document.createElement('div');
-        mobileMenu.className = 'mobile-menu';
-        const links = document.querySelector('.links');
-        if (links) {
-            mobileMenu.innerHTML = links.innerHTML;
-            nav.appendChild(mobileMenu);
-        }
-    }
-    */
-});
-
-// Theme toggle functionality
-function toggleTheme() {
-    const body = document.body;
-    const themeBtn = document.getElementById('theme-btn');
-    const themeBtnMobile = document.getElementById('theme-btn-mobile');
-    
-    body.classList.toggle('dark-theme');
-    
-    if (body.classList.contains('dark-theme')) {
-        if (themeBtn) themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
-        if (themeBtnMobile) themeBtnMobile.innerHTML = '<i class="fas fa-moon"></i>';
-    } else {
-        if (themeBtn) themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-        if (themeBtnMobile) themeBtnMobile.innerHTML = '<i class="fas fa-sun"></i>';
-    }
-    
-    localStorage.setItem('theme', body.classList.contains('dark-theme') ? 'dark' : 'light');
-}
-
-// Load saved theme
-document.addEventListener('DOMContentLoaded', function() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-theme');
-        const themeBtn = document.getElementById('theme-btn');
-        const themeBtnMobile = document.getElementById('theme-btn-mobile');
-        if (themeBtn) themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
-        if (themeBtnMobile) themeBtnMobile.innerHTML = '<i class="fas fa-moon"></i>';
-    }
-});
-
-// Page load animations
-window.onload = async () => {
-    try {
-        // Check if user is already logged in
-        const user = localStorage.getItem('user');
-        if (user && window.location.pathname.includes('login.html')) {
-            window.location.href = 'dashboard.html';
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Squad | CodersMEET</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/squad-chat.js"></script>
+    <style>
+        .squad-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 20px auto;
+            padding: 0 20px;
+            min-height: calc(100vh - 120px);
         }
 
-        // Check server connection
-        const isConnected = await checkServerConnection();
-        if (!isConnected) {
-            alert('Unable to connect to server. Please make sure the server is running.');
-            return;
+        .sidebar, .main-content, .chat-sidebar {
+            background: var(--card-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
-        // Fade in effect
-        document.body.style.opacity = 0;
-        let opacity = 0;
-        const fadeIn = setInterval(() => {
-            opacity += 0.1;
-            document.body.style.opacity = opacity;
-            if(opacity >= 1) clearInterval(fadeIn);
-        }, 100);
-
-        // Slide in login form
-        const loginContent = document.querySelector('.login-content');
-        if(loginContent) {
-            loginContent.style.transform = 'translateY(50px)';
-            loginContent.style.opacity = '0';
-            setTimeout(() => {
-                loginContent.style.transform = 'translateY(0)';
-                loginContent.style.opacity = '1';
-                loginContent.style.transition = 'all 0.5s ease-out';
-            }, 200);
-        }
-
-        // Initialize about section animations
-        const aboutSection = document.querySelector('#about');
-        if (aboutSection) {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.style.opacity = "1";
-                        entry.target.style.transform = "translateY(0)";
-                    }
-                });
-            }, { threshold: 0.1 });
-
-            const animatedElements = aboutSection.querySelectorAll('.about-content, .about-stats, .about-features');
-            animatedElements.forEach(el => {
-                el.style.opacity = "0";
-                el.style.transform = "translateY(50px)";
-                el.style.transition = "all 0.8s ease-out";
-                observer.observe(el);
-            });
-        }
-        
-        // Adjust signup form layout
-        const signupForm = document.getElementById('signupForm');
-        if (signupForm) {
-            // Ensure username and password fields are on separate lines
-            const formRows = signupForm.querySelectorAll('.form-row');
-            formRows.forEach(row => {
-                const formGroups = row.querySelectorAll('.form-group');
-                if (formGroups.length > 1) {
-                    // Create a new row for each form group to ensure they're on separate lines
-                    formGroups.forEach((group, index) => {
-                        if (index > 0) {
-                            const newRow = document.createElement('div');
-                            newRow.className = 'form-row';
-                            row.parentNode.insertBefore(newRow, row.nextSibling);
-                            newRow.appendChild(group);
-                        }
-                    });
-                }
-            });
-            
-            // Add some spacing between form elements
-            const style = document.createElement('style');
-            style.textContent = `
-                .form-row {
-                    margin-bottom: 15px;
-                }
-                .form-group {
-                    margin-bottom: 10px;
-                }
-                #usernameAvailability {
-                    margin-top: 3px;
-                    margin-bottom: 5px;
-                }
-                .signup-container {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    padding: 15px;
-                }
-                .form-group input {
-                    padding: 8px;
-                }
-                .signup-btn {
-                    padding: 8px 20px;
-                    font-size: 1em;
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Fix full name input to ensure it doesn't touch the header
-            const fullNameInput = document.getElementById('fullName');
-            if (fullNameInput) {
-                const fullNameGroup = fullNameInput.closest('.form-group');
-                if (fullNameGroup) {
-                    fullNameGroup.style.marginTop = '15px';
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Initialization error:', error);
-        alert('Error initializing application. Please refresh the page.');
-    }
-};
-
-// API configuration with proper URL detection
-const API_CONFIG = {
-    // Use window.location.origin instead of process.env
-    baseURL: window.location.hostname === 'localhost' 
-        ? 'http://localhost:5000' 
-        : window.location.origin,
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    }
-};
-
-console.log('API base URL:', API_CONFIG.baseURL);
-
-// API helper function with better error handling
-async function fetchAPI(endpoint, options = {}) {
-    const url = `${API_CONFIG.baseURL}${endpoint}`;
-    console.log(`Making API request to: ${url}`);
-
-    try {
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                ...API_CONFIG.headers,
-                ...options.headers
-            },
-            mode: 'cors'
-        });
-
-        console.log(`Response status: ${response.status}`);
-
-        let data;
-        try {
-            data = await response.json();
-        } catch (e) {
-            console.error('Error parsing JSON response:', e);
-            data = { error: 'Invalid server response' };
-        }
-
-        if (!response.ok) {
-            throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
-        }
-
-        return data;
-    } catch (error) {
-        if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-            console.error(`Network error for ${url}:`, error);
-            throw new Error(`Unable to connect to server. Please check your internet connection.`);
-        }
-        throw error;
-    }
-}
-
-// Server connection check with retry and timeout
-async function checkServerConnection(retries = 3, timeout = 5000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            console.log(`Checking server connection (attempt ${i + 1}/${retries})...`);
-            
-            // Add timeout to fetch
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            const data = await fetchAPI('/api/status', {
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-            console.log('Server connection successful:', data);
-            return true;
-        } catch (error) {
-            console.error(`Connection attempt ${i + 1} failed:`, error);
-            if (i === retries - 1) {
-                return false;
-            }
-            // Exponential backoff
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
-        }
-    }
-    return false;
-}
-
-// Login function with better error handling and user feedback
-async function login(event) {
-    event.preventDefault();
-    const loginBtn = document.querySelector('button[type="submit"]');
-    const errorDiv = document.getElementById('loginError') || createErrorDiv();
-    
-    try {
-        loginBtn.disabled = true;
-        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-        errorDiv.textContent = '';
-        
-        const isConnected = await checkServerConnection();
-        if (!isConnected) {
-            throw new Error('Unable to connect to server. Please check your internet connection and try again.');
-        }
-
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-
-        if (!email || !password) {
-            throw new Error('Please enter both email and password');
-        }
-
-        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-        
-        const data = await fetchAPI('/api/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password })
-        });
-
-        if (data.success) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = 'dashboard.html';
-        } else {
-            throw new Error(data.message || 'Login failed');
-        }
-    } catch (error) {
-        errorDiv.textContent = error.message;
-        loginBtn.innerHTML = 'Login';
-    } finally {
-        loginBtn.disabled = false;
-    }
-}
-
-// Helper function to create error div
-function createErrorDiv() {
-    const errorDiv = document.createElement('div');
-    errorDiv.id = 'loginError';
-    errorDiv.style.color = 'red';
-    errorDiv.style.marginTop = '10px';
-    errorDiv.style.textAlign = 'center';
-    const form = document.querySelector('form');
-    form.appendChild(errorDiv);
-    return errorDiv;
-}
-
-// Update the username availability check function
-async function checkUsernameAvailability() {
-    const usernameInput = document.getElementById('username');
-    const username = usernameInput.value.trim();
-    const availabilityMessage = document.getElementById('usernameAvailability');
-    
-    // Reset message
-    availabilityMessage.textContent = '';
-    availabilityMessage.className = '';
-    
-    // Basic validation
-    if (!username) {
-        return;
-    }
-    
-    if (username.length < 3 || username.length > 20) {
-        availabilityMessage.textContent = 'Username must be between 3 and 20 characters';
-        availabilityMessage.className = 'error-message';
-        return;
-    }
-    
-    // Check if username contains only allowed characters
-    const usernameRegex = /^[a-zA-Z0-9_]+$/;
-    if (!usernameRegex.test(username)) {
-        availabilityMessage.textContent = 'Username can only contain letters, numbers, and underscores';
-        availabilityMessage.className = 'error-message';
-        return;
-    }
-    
-    try {
-        availabilityMessage.textContent = 'Checking...';
-        
-        const response = await fetch(`${API_CONFIG.baseURL}/check-username`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            if (data.available) {
-                availabilityMessage.textContent = 'Username is available';
-                availabilityMessage.className = 'success-message';
-                usernameInput.dataset.available = 'true';
-            } else {
-                availabilityMessage.textContent = 'Username is already taken';
-                availabilityMessage.className = 'error-message';
-                usernameInput.dataset.available = 'false';
-            }
-        } else {
-            throw new Error(data.error || 'Failed to check username');
-        }
-    } catch (error) {
-        console.error('Username check error:', error);
-        availabilityMessage.textContent = 'Error checking username';
-        availabilityMessage.className = 'error-message';
-        usernameInput.dataset.available = 'false';
-    }
-}
-
-// Add signup function with better error handling
-async function handleSignup(event) {
-    event.preventDefault();
-    
-    if (!validateForm('signupForm')) return;
-
-    const fullName = document.getElementById('fullName').value.trim();
-    const username = document.getElementById('username').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    const signupBtn = document.querySelector('.signup-btn');
-    
-    try {
-        // Check server connection first
-        const isConnected = await checkServerConnection();
-        if (!isConnected) {
-            throw new Error('Unable to connect to server. Please try again later.');
-        }
-
-        if (password !== confirmPassword) {
-            throw new Error('Passwords do not match!');
-        }
-        
-        signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        const response = await fetch(`${API_CONFIG.baseURL}/signup`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                fullName,
-                username,
-                email,
-                password
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.error || 'Registration failed');
-        }
-        
-        signupBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
-        alert('Registration successful! Please login.');
-        window.location.href = 'login.html';
-    } catch (error) {
-        console.error('Signup error:', error);
-        signupBtn.innerHTML = 'Sign Up';
-        alert(error.message || 'Registration failed. Please try again.');
-    }
-}
-
-// Function to logout
-async function logout() {
-    try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        
-        localStorage.removeItem('user');
-        window.location.href = 'login.html';
-    } catch (error) {
-        console.error('Logout error:', error);
-        alert('Error signing out');
-    }
-}
-
-// Google Sign-in
-async function handleGoogleLogin() {
-    try {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google'
-        });
-        
-        if (error) throw error;
-        
-        // The redirect happens automatically
-    } catch (error) {
-        console.error('Google login error:', error);
-        alert(error.message || 'Google login failed');
-    }
-}
-
-// Add floating label effect
-const inputs = document.querySelectorAll('.form-group input');
-inputs.forEach(input => {
-    input.addEventListener('focus', function() {
-        this.parentElement.classList.add('focused');
-    });
-    
-    input.addEventListener('blur', function() {
-        if(!this.value) {
-            this.parentElement.classList.remove('focused');
-        }
-    });
-});
-
-// Add loading animation to login/signup button
-const loginBtn = document.querySelector('.login-btn');
-if(loginBtn) {
-    loginBtn.addEventListener('click', function(e) {
-        if(validateForm(e)) {
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            handleLogin(e);
-        }
-    });
-}
-
-// Social login hover effects
-const socialIcons = document.querySelectorAll('.social-icons a');
-socialIcons.forEach(icon => {
-    icon.addEventListener('mouseover', function() {
-        this.style.transform = 'translateY(-5px) scale(1.2)';
-    });
-    
-    icon.addEventListener('mouseout', function() {
-        this.style.transform = 'translateY(0) scale(1)';
-    });
-});
-
-// Add styles for mobile menu
-const style = document.createElement('style');
-style.textContent = `
-    /* Remove the hamburger button styles */
-    /*
-    .hamburger {
-        display: none;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 10px;
-        z-index: 1000;
-    }
-
-    .hamburger span {
-        display: block;
-        width: 25px;
-        height: 3px;
-        background-color: #333;
-        margin: 5px 0;
-        transition: 0.3s;
-    }
-    */
-    
-    /* Keep other necessary styles... */
-`;
-
-document.head.appendChild(style);
-
-// Rearrange signup form on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const signupForm = document.getElementById('signupForm');
-    if (signupForm) {
-        // Ensure username field has proper layout
-        const usernameGroup = document.querySelector('.form-group:has(#username)');
-        if (usernameGroup) {
-            // Create a container for username input and check button
-            const usernameInput = document.getElementById('username');
-            const checkButton = document.getElementById('checkUsernameBtn');
-            
-            if (usernameInput && checkButton) {
-                const container = document.createElement('div');
-                container.className = 'username-container';
-                
-                // Rearrange the elements
-                usernameInput.parentNode.insertBefore(container, usernameInput);
-                container.appendChild(usernameInput);
-                container.appendChild(checkButton);
-            }
-        }
-        
-        // Add event listener for username check button
-        const checkUsernameBtn = document.getElementById('checkUsernameBtn');
-        if (checkUsernameBtn) {
-            checkUsernameBtn.addEventListener('click', checkUsernameAvailability);
-        }
-        
-        // Add event listener for username input to reset availability status
-        const usernameInput = document.getElementById('username');
-        if (usernameInput) {
-            usernameInput.addEventListener('input', function() {
-                this.dataset.available = 'false';
-                const availabilityDiv = document.getElementById('usernameAvailability');
-                if (availabilityDiv) {
-                    availabilityDiv.textContent = '';
-                    availabilityDiv.className = '';
-                }
-            });
-        }
-        
-        // Add event listener for form submission
-        signupForm.addEventListener('submit', handleSignup);
-    }
-});
-
-// Update the signup form layout styles
-const signupStyles = `
-    .signup-container {
-        max-width: 400px;
-        margin: 0 auto;
-        padding: 15px;
-    }
-
-    .form-row {
-        display: flex;
-        flex-direction: row !important;
-        gap: 15px;
-        margin-bottom: 15px;
-        flex-wrap: wrap;
-    }
-
-    .form-group {
-        flex: 1;
-        min-width: 200px;
-        margin-bottom: 10px;
-    }
-
-    /* Username container specific styles */
-    .username-container {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-    }
-
-    /* Input fields */
-    .form-group input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-
-    /* Check username button */
-    #checkUsernameBtn {
-        padding: 8px 12px;
-        white-space: nowrap;
-        height: fit-content;
-        margin-top: 20px;
-    }
-
-    /* Availability message */
-    #usernameAvailability {
-        width: 100%;
-        margin-top: 3px;
-        font-size: 0.85em;
-    }
-
-    /* Submit button container */
-    .submit-container {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 15px;
-    }
-
-    .signup-btn {
-        padding: 8px 20px;
-        font-size: 0.95em;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .form-row {
-            flex-direction: column !important;
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
             gap: 8px;
         }
 
-        .form-group {
-            width: 100%;
+        /* Squad Header */
+        .squad-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
         }
-        
-        .signup-container {
-            max-width: 300px;
+
+        .squad-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .squad-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+        }
+
+        .squad-details h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .squad-level {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .level-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .bronze { background: #cd7f32; color: white; }
+        .silver { background: #c0c0c0; color: #333; }
+        .gold { background: #ffd700; color: #333; }
+        .platinum { background: #e5e4e2; color: #333; }
+        .diamond { background: #b9f2ff; color: #333; }
+        .master { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; }
+
+        .squad-points {
+            font-size: 0.9rem;
+            color: var(--secondary-text);
+        }
+
+        .squad-actions button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            background: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .squad-actions button:hover {
+            background: var(--secondary-color);
+        }
+
+        /* Squad Members */
+        .squad-members {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .member-card {
+            background: var(--bg-color);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .member-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .member-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .member-name {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .member-role {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+        }
+
+        .member-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--secondary-text);
+        }
+
+        .member-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .member-actions button {
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: none;
+            background: var(--bg-color);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .member-actions button:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .chat-status.success { 
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+
+        .chat-status.error { 
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: var(--bg-color);
+        }
+
+        .message {
+            margin-bottom: 12px;
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .message.sent {
+            margin-left: auto;
+            background: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received {
+            margin-right: auto;
+            background: var(--card-bg);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.system {
+            max-width: 100%;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-style: italic;
+            color: var(--secondary-text);
+        }
+
+        .message-sender {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .message-content {
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .chat-input button {
+            padding: 8px 20px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .chat-input button:hover {
+            background: var(--secondary-color);
+        }
+
+        /* Video Call Section */
+        .video-call-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .video-box {
+            background: #000;
+            border-radius: 8px;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .call-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .call-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .call-btn.start { background: #28a745; color: white; }
+        .call-btn.end { background: #dc3545; color: white; }
+        .call-btn.mute { background: #6c757d; color: white; }
+        .call-btn.video { background: #17a2b8; color: white; }
+
+        /* Online Friends Sidebar */
+        .online-friends {
+            margin-bottom: 20px;
+        }
+
+        .friend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             padding: 10px;
+            border-radius: 8px;
+            transition: background 0.3s;
+            cursor: pointer;
+            margin-bottom: 10px;
         }
-    }
-`;
 
-// Add the styles to the document
-document.addEventListener('DOMContentLoaded', function() {
-    const style = document.createElement('style');
-    style.textContent = signupStyles;
-    document.head.appendChild(style);
+        .friend-item:hover {
+            background: rgba(7, 123, 50, 0.1);
+        }
 
-    // Rearrange signup form layout
-    const signupForm = document.getElementById('signupForm');
-    if (signupForm) {
-        // Group form fields into rows
-        const formGroups = signupForm.querySelectorAll('.form-group');
-        const rows = [
-            ['fullName', 'email'],
-            ['username', 'password'],
-            ['confirmPassword']
-        ];
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            position: relative;
+        }
 
-        // Clear existing form structure
-        const formContent = signupForm.innerHTML;
-        signupForm.innerHTML = '';
+        .online-indicator {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            background: #28a745;
+            border-radius: 50%;
+            border: 2px solid var(--card-bg);
+        }
 
-        // Create new structured rows
-        rows.forEach(rowFields => {
-            const row = document.createElement('div');
-            row.className = 'form-row';
+        .friend-info {
+            flex: 1;
+        }
+
+        .friend-name {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .friend-status {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+        }
+
+        .friend-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .friend-action-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid var(--border-color);
+        }
+
+        .friend-action-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Add Members Section */
+        .add-members {
+            margin-top: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .search-results {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .cancel-btn, .save-btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .cancel-btn {
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .save-btn {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(7, 123, 50, 0.1);
+            border-radius: 3px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        /* Squad Ranking */
+        .squad-ranking {
+            margin-bottom: 20px;
+        }
+
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(7, 123, 50, 0.1);
+        }
+
+        .ranking-item:last-child {
+            border-bottom: none;
+        }
+
+        .ranking-label {
+            color: var(--secondary-text);
+        }
+
+        .ranking-value {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .squad-container {
+                grid-template-columns: 1fr;
+            }
             
-            rowFields.forEach(fieldId => {
-                const group = Array.from(formGroups).find(g => 
-                    g.querySelector(`#${fieldId}`)
-                );
-                if (group) {
-                    row.appendChild(group.cloneNode(true));
-                }
-            });
-
-            signupForm.appendChild(row);
-        });
-
-        // Add submit button in its own row
-        const submitRow = document.createElement('div');
-        submitRow.className = 'submit-container';
-        submitRow.innerHTML = '<button type="submit" class="signup-btn">Sign Up</button>';
-        signupForm.appendChild(submitRow);
-
-        // Reattach event listeners
-        const usernameInput = signupForm.querySelector('#username');
-        if (usernameInput) {
-            usernameInput.addEventListener('input', function() {
-                this.dataset.available = 'false';
-                const availabilityDiv = document.getElementById('usernameAvailability');
-                if (availabilityDiv) {
-                    availabilityDiv.textContent = '';
-                    availabilityDiv.className = '';
-                }
-            });
+            .sidebar, .chat-sidebar {
+                display: none;
+            }
         }
 
-        // Add check username button functionality
-        const checkUsernameBtn = signupForm.querySelector('#checkUsernameBtn');
-        if (checkUsernameBtn) {
-            checkUsernameBtn.addEventListener('click', checkUsernameAvailability);
+        /* Video Call Styles */
+        #videoCallContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #121212;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
         }
 
-        // Add form submission handler
-        signupForm.addEventListener('submit', handleSignup);
-    }
-});
+        .call-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+        }
 
-// Typewriter effect
-document.addEventListener('DOMContentLoaded', function() {
-    const typewriterText = document.querySelector('.typewriter-text');
-    if (typewriterText) {
-        const phrases = ['CodersMEET', 'Innovation', 'Collaboration', 'Community'];
-        let currentPhraseIndex = 0;
-        let currentCharIndex = 0;
-        let isDeleting = false;
-        let typingSpeed = 100;
+        .call-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+        }
 
-        function typeEffect() {
-            const currentPhrase = phrases[currentPhraseIndex];
+        .call-status {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-left: 10px;
+        }
+
+        .call-duration {
+            font-size: 1.1rem;
+            font-family: monospace;
+        }
+
+        .video-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .video-participant {
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s;
+        }
+
+        .video-participant:hover {
+            transform: scale(1.02);
+        }
+
+        .participant-video {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 75%; /* 4:3 aspect ratio */
+            background: #111;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+        }
+
+        .participant-video video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        .participant-video.camera-off video {
+            display: none;
+        }
+
+        .participant-video.camera-on .video-placeholder {
+            display: none;
+        }
+
+        .participant-video.camera-off .video-placeholder {
+            display: flex;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 0;
+            background: var(--primary-color, #4CAF50);
+        }
+
+        .participant-initials {
+            font-size: 3rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .participant-name {
+            padding: 10px 15px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: white;
+        }
+
+        .participant-status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+        }
+
+        .microphone-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .microphone-indicator.muted {
+            color: #f44336;
+        }
+
+        .self .participant-video video {
+            transform: scaleX(-1); /* Mirror self view */
+        }
+
+        .call-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .call-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .call-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .call-btn.active {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .call-btn.end-call {
+            background: rgba(244, 67, 54, 0.8);
+        }
+
+        .call-btn.end-call:hover {
+            background: rgba(244, 67, 54, 1);
+        }
+
+        /* In-call chat panel */
+        .in-call-chat {
+            position: absolute;
+            right: 20px;
+            bottom: 80px;
+            width: 300px;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .in-call-chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .in-call-chat-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .in-call-chat-header button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .in-call-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .in-call-chat-messages .message {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 90%;
+            align-self: flex-start;
+        }
+
+        .in-call-chat-messages .message.system {
+            background: rgba(0, 0, 0, 0.3);
+            align-self: center;
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .in-call-chat-messages .message-sender {
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .in-call-chat-messages .message-content {
+            font-size: 0.9rem;
+        }
+
+        .in-call-chat-messages .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            text-align: right;
+            margin-top: 3px;
+        }
+
+        .in-call-chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .in-call-chat-input input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            color: white;
+            outline: none;
+        }
+
+        .in-call-chat-input button {
+            background: none;
+            border: none;
+            color: white;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+
+        /* Participants panel */
+        .call-participants-panel {
+            position: absolute;
+            left: 20px;
+            top: 70px;
+            width: 250px;
+            max-height: 500px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .panel-header button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .panel-content {
+            overflow-y: auto;
+            max-height: 450px;
+        }
+
+        .participant-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .participant-item-name {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .participant-item-status {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-right: 10px;
+        }
+
+        .participant-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .participant-item-actions button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .participant-item-actions button:hover {
+            opacity: 1;
+        }
+
+        .video-participant {
+            transition: all 0.3s ease;
+        }
+        
+        .video-participant.speaking {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+        
+        .microphone-indicator {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 3;
+        }
+        
+        .microphone-indicator.muted i {
+            color: red;
+        }
+        
+        .waiting-message, .no-friends-message, .error-message {
+            grid-column: 1 / -1;
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .waiting-message p, .no-friends-message p, .error-message p {
+            margin: 5px 0;
+        }
+        
+        .error-message {
+            background: rgba(255, 0, 0, 0.1);
+        }
+        
+        .participant-video.camera-on video {
+            z-index: 2;
+        }
+
+        /* Add these styles to your existing CSS */
+        .video-participant {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 200px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .participant-video {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        .participant-video video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: white;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 160px);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                Coders <span>MEET</span>
+            </div>
+            <div class="links">
+                <div class="link"><a href="dashboard.html">Dashboard</a></div>
+                <div class="link"><a href="hack-a-match.html">Hack a Match</a></div>
+                <div class="link"><a href="#" class="active">Your Squad</a></div>
+                <div class="link"><a href="#" onclick="logout()">Logout</a></div>
+            </div>
+            <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
+        </div>
+        <div class="dropdown">
+            <div class="links">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="hack-a-match.html">Hack a Match</a>
+                <a href="#" class="active">Your Squad</a>
+                <a href="#" onclick="logout()">Logout</a>
+                <i class="fa-solid fa-xmark cancel" onclick="cancel()"></i>
+            </div>
+        </div>
+    </nav>
+
+    <div class="squad-container">
+        <!-- Left Sidebar - Squad Info -->
+        <div class="sidebar">
+            <div class="section-title">
+                <i class="fas fa-users"></i> Squad Info
+            </div>
+            <div class="squad-header">
+                <div class="squad-info">
+                    <div class="squad-avatar">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="squad-details">
+                        <h2 id="squadName">Code Warriors</h2>
+                        <div class="squad-level">
+                            <span class="level-badge" id="squadLevelBadge">Silver</span>
+                            <span class="squad-points" id="squadPoints">5,230 points</span>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="levelProgress" style="width: 65%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="squad-actions">
+                <button onclick="openSquadSettings()">
+                    <i class="fas fa-cog"></i> Squad Settings
+                </button>
+            </div>
             
-            if (isDeleting) {
-                typewriterText.textContent = currentPhrase.substring(0, currentCharIndex - 1);
-                currentCharIndex--;
-                typingSpeed = 50;
+            <div class="section-title" style="margin-top: 20px;">
+                <i class="fas fa-medal"></i> Squad Ranking
+            </div>
+            <div class="squad-ranking">
+                <div class="ranking-item">
+                    <div class="ranking-label">Global Rank:</div>
+                    <div class="ranking-value">#42</div>
+                </div>
+                <div class="ranking-item">
+                    <div class="ranking-label">Regional Rank:</div>
+                    <div class="ranking-value">#8</div>
+                </div>
+                <div class="ranking-item">
+                    <div class="ranking-label">Next Level:</div>
+                    <div class="ranking-value">Gold (7,500 points)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div class="section-title">
+                <i class="fas fa-users"></i> Squad Members
+            </div>
+            <div class="squad-members" id="squadMembersList">
+                <!-- Member cards will be populated here -->
+            </div>
+
+
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div class="section-title">
+                        <i class="fas fa-comments"></i>
+                        Squad Chat
+                    </div>
+                    <div id="chat-status" class="chat-status">Connecting...</div>
+                </div>
+                <div id="chat-messages" class="chat-messages">
+                    <div class="message system">
+                        <div class="message-content">Welcome to the squad chat! Messages will appear here.</div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        placeholder="Type your message..." 
+                        autocomplete="off"
+                    >
+                    <button id="send-button">
+                        <i class="fas fa-paper-plane"></i>
+                        Send
+                    </button>
+                </div>
+            </div>
+
+            <div class="video-call-section">
+                <div class="section-title">
+                    <i class="fas fa-video"></i> Video Call
+                </div>
+                <div class="video-container">
+                    <div class="video-box">
+                        <i class="fas fa-user fa-3x"></i>
+                    </div>
+                    <div class="video-box">
+                        <i class="fas fa-user fa-3x"></i>
+                    </div>
+                </div>
+                <div class="call-controls">
+                    <button class="call-btn start" title="Start Call" onclick="startGroupCall()">
+                        <i class="fas fa-phone"></i>
+                    </button>
+                    <button class="call-btn end" title="End Call" onclick="endCall()">
+                        <i class="fas fa-phone-slash"></i>
+                    </button>
+                    <button class="call-btn mute" title="Mute/Unmute" onclick="toggleMute()">
+                        <i class="fas fa-microphone-slash"></i>
+                    </button>
+                    <button class="call-btn video" title="Video On/Off" onclick="toggleVideo()">
+                        <i class="fas fa-video"></i>
+                    </button>
+                    <button class="call-btn" title="Share Screen" onclick="toggleScreenShare()">
+                        <i class="fas fa-desktop"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Online Friends -->
+        <div class="chat-sidebar">
+            <div class="section-title">
+                <i class="fas fa-circle online"></i> Online Friends
+            </div>
+            <div class="online-friends" id="onlineFriendsList">
+                <!-- Online friends will be populated here -->
+            </div>
+
+            <div class="section-title">
+                <i class="fas fa-user-plus"></i> Add Members
+            </div>
+            <div class="add-members">
+                <div class="form-group">
+                    <input type="text" id="searchMembers" placeholder="Search by username...">
+                </div>
+                <div id="searchResults" class="search-results">
+                    <!-- Search results will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Squad Settings Modal -->
+    <div id="squadSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Squad Settings</div>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="squadSettingsForm">
+                <div class="form-group">
+                    <label for="squadNameInput">Squad Name</label>
+                    <input type="text" id="squadNameInput" value="Code Warriors">
+                </div>
+                <div class="form-group">
+                    <label for="squadPrivacy">Privacy</label>
+                    <select id="squadPrivacy">
+                        <option value="public">Public - Anyone can find and join</option>
+                        <option value="private" selected>Private - By invitation only</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Video Call Container (Hidden by default) -->
+    <div id="videoCallContainer" style="display: none;">
+        <div class="call-header">
+            <div class="call-title">
+                <i class="fas fa-video"></i>
+                <span>Squad Video Call</span>
+                <span id="callStatus" class="call-status">Connected</span>
+            </div>
+            <div class="call-duration">00:00</div>
+        </div>
+        
+        <div id="videoParticipants" class="video-grid">
+            <!-- Local video container -->
+            <div class="video-participant self">
+                <div class="participant-video camera-on">
+                    <video id="localVideo" autoplay muted playsinline></video>
+                    <div class="video-placeholder">
+                        <div class="participant-initials"></div>
+                    </div>
+                    <div class="microphone-indicator">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                </div>
+                <div class="participant-name">You</div>
+                <div class="participant-status">Connected</div>
+            </div>
+            <!-- Participants will be added here dynamically -->
+        </div>
+        
+        <div class="call-controls">
+            <button class="call-btn active" onclick="toggleMute()" title="Mute">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button class="call-btn active" onclick="toggleVideo()" title="Turn Video Off">
+                <i class="fas fa-video"></i>
+            </button>
+            <button class="call-btn" onclick="toggleScreenShare()" title="Share Screen">
+                <i class="fas fa-desktop"></i>
+            </button>
+            <button class="call-btn end-call" onclick="endCall()" title="End Call">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Add this near the end of your file, before the closing </body> tag -->
+    <script src="/js/fallback-chat.js"></script>
+
+    <script>
+      // Check if we need to use the fallback chat system
+      let usingFallback = false;
+      
+      // Function to test API availability
+      function testApiAndSocketAvailability() {
+        // First try the API
+        fetch('/api/server-info')
+          .then(response => {
+            if (!response.ok) throw new Error('API not available');
+            return response.json();
+          })
+          .then(data => {
+            console.log('Server info:', data);
+            // API is available, now check if Socket.io is working
+            if (typeof io !== 'undefined' && window.socket && window.socket.connected) {
+              console.log('Socket.io is connected, using real-time chat');
+              // Socket.io is working, no need for fallback
+              usingFallback = false;
             } else {
-                typewriterText.textContent = currentPhrase.substring(0, currentCharIndex + 1);
-                currentCharIndex++;
-                typingSpeed = 100;
+              console.log('Socket.io not connected, using fallback chat');
+              // Socket.io is not working, use fallback
+              usingFallback = true;
+              if (window.FallbackChat) {
+                window.FallbackChat.startPolling();
+              }
             }
-            
-            if (!isDeleting && currentCharIndex === currentPhrase.length) {
-                isDeleting = true;
-                typingSpeed = 1000; // Pause at the end
-            } else if (isDeleting && currentCharIndex === 0) {
-                isDeleting = false;
-                currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
-                typingSpeed = 500; // Pause before typing next phrase
+          })
+          .catch(error => {
+            console.warn('API test failed:', error);
+            // API is not available, use fallback
+            usingFallback = true;
+            if (window.FallbackChat) {
+              window.FallbackChat.useLocalStorage(true);
+              window.FallbackChat.startPolling();
             }
-            
-            setTimeout(typeEffect, typingSpeed);
+          });
+      }
+      
+      // Run the test when the page loads
+      window.addEventListener('load', testApiAndSocketAvailability);
+      
+      // Update the send button to use the appropriate chat system
+      document.getElementById('send-button')?.addEventListener('click', function() {
+        if (usingFallback && window.FallbackChat) {
+          window.FallbackChat.sendMessage();
+        } else if (window.sendSquadMessage) {
+          window.sendSquadMessage();
+        } else if (window.PollingChat) {
+          window.PollingChat.sendMessage();
         }
-        
-        typeEffect();
-    }
-});
-
-// Update the hamburg function
-function hamburg() {
-    const dropdown = document.querySelector('.dropdown');
-    dropdown.classList.add('active');
-}
-
-// Update the cancel function
-function cancel() {
-    const dropdown = document.querySelector('.dropdown');
-    dropdown.classList.remove('active');
-}
-
-// Add these functions after other functions
-let isEmailVerified = false;
-
-async function sendOTP() {
-    const email = document.getElementById('email').value.trim();
-    const verifyBtn = document.getElementById('verifyEmailBtn');
-    const statusDiv = document.getElementById('emailVerificationStatus');
-    
-    try {
-        verifyBtn.disabled = true;
-        verifyBtn.innerHTML = 'Sending...';
-        
-        const response = await fetch(`${API_CONFIG.baseURL}/send-otp`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            document.getElementById('otpModal').style.display = 'flex';
-            document.getElementById('resendOtpBtn').style.display = 'block';
-            statusDiv.innerHTML = '<span style="color: green;">OTP sent! Please check your email.</span>';
-        } else {
-            throw new Error(data.error);
+      });
+      
+      // Also handle Enter key in the input field
+      document.getElementById('message-input')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          if (usingFallback && window.FallbackChat) {
+            window.FallbackChat.sendMessage();
+          } else if (window.sendSquadMessage) {
+            window.sendSquadMessage();
+          } else if (window.PollingChat) {
+            window.PollingChat.sendMessage();
+          }
+          e.preventDefault();
         }
-    } catch (error) {
-        statusDiv.innerHTML = `<span style="color: red;">${error.message}</span>`;
-    } finally {
-        verifyBtn.disabled = false;
-        verifyBtn.innerHTML = 'Verify Email';
-    }
-}
-
-async function verifyOTP() {
-    const email = document.getElementById('email').value.trim();
-    const otp = document.getElementById('otpInput').value.trim();
-    const messageDiv = document.getElementById('otpMessage');
-    const statusDiv = document.getElementById('emailVerificationStatus');
-    
-    try {
-        const response = await fetch(`${API_CONFIG.baseURL}/verify-otp`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, otp })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            isEmailVerified = true;
-            document.getElementById('otpModal').style.display = 'none';
-            statusDiv.innerHTML = '<span style="color: green;">✓ Email verified!</span>';
-            document.getElementById('verifyEmailBtn').disabled = true;
-            document.getElementById('email').readOnly = true;
-        } else {
-            throw new Error(data.error);
-        }
-    } catch (error) {
-        messageDiv.innerHTML = `<span style="color: red;">${error.message}</span>`;
-    }
-}
-
-// Update the handleSignup function to check for email verification
-async function handleSignup(event) {
-    event.preventDefault();
-    
-    if (!isEmailVerified) {
-        alert('Please verify your email first');
-        return;
-    }
-    
-    if (!validateForm('signupForm')) return;
-
-    const fullName = document.getElementById('fullName').value.trim();
-    const username = document.getElementById('username').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    const signupBtn = document.querySelector('.signup-btn');
-    
-    try {
-        // Check server connection first
-        const isConnected = await checkServerConnection();
-        if (!isConnected) {
-            throw new Error('Unable to connect to server. Please try again later.');
-        }
-
-        if (password !== confirmPassword) {
-            throw new Error('Passwords do not match!');
-        }
-        
-        signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        const response = await fetch(`${API_CONFIG.baseURL}/signup`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                fullName,
-                username,
-                email,
-                password
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.error || 'Registration failed');
-        }
-        
-        signupBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
-        alert('Registration successful! Please login.');
-        window.location.href = 'login.html';
-    } catch (error) {
-        console.error('Signup error:', error);
-        signupBtn.innerHTML = 'Sign Up';
-        alert(error.message || 'Registration failed. Please try again.');
-    }
-}
-
-// Add event listeners when the document loads
-document.addEventListener('DOMContentLoaded', function() {
-    const verifyEmailBtn = document.getElementById('verifyEmailBtn');
-    const submitOtpBtn = document.getElementById('submitOtpBtn');
-    const resendOtpBtn = document.getElementById('resendOtpBtn');
-    
-    if (verifyEmailBtn) {
-        verifyEmailBtn.addEventListener('click', sendOTP);
-    }
-    
-    if (submitOtpBtn) {
-        submitOtpBtn.addEventListener('click', verifyOTP);
-    }
-    
-    if (resendOtpBtn) {
-        resendOtpBtn.addEventListener('click', sendOTP);
-    }
-});
+      });
+    </script>
+</body>
+</html> 
