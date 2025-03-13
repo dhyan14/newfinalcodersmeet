@@ -2594,6 +2594,11 @@
         
         function loadFallbackChatMessages() {
             const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) {
+                console.error('Chat messages container not found');
+                return;
+            }
+            
             chatMessages.innerHTML = `
                 <div class="message received">
                     <div class="message-sender">System</div>
