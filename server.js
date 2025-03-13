@@ -464,9 +464,58 @@ io.on('connection', (socket) => {
   });
 });
 
-// Add REST API endpoint for squad messages
+// Update the GET endpoint to retrieve messages with "since" parameter
+app.get('/api/squad-messages', async (req, res) => {
+  try {
+    console.log('GET /api/squad-messages - Query:', req.query);
+    await connectToDatabase();
+    
+    const { squadId, since } = req.query;
+    
+    // Build the query
+    const query = {};
+    
+    // Add squadId filter if provided
+    if (squadId) {
+      query.squadId = squadId;
+    }
+    
+    // Add timestamp filter if "since" parameter is provided
+    if (since) {
+      try {
+        query.timestamp = { $gt: new Date(since) };
+      } catch (e) {
+        console.error('Invalid date format for since parameter:', since, e);
+      }
+    }
+    
+    console.log('MongoDB query:', JSON.stringify(query));
+    
+    // Get messages
+    const messages = await SquadChat.find(query)
+      .sort({ timestamp: 1 }) // Sort by timestamp ascending
+      .limit(50)
+      .populate('sender', 'username fullName')
+      .lean();
+    
+    console.log(`Found ${messages.length} messages`);
+    
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch messages',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// Update the POST endpoint for messages
 app.post('/api/squad-messages', async (req, res) => {
   try {
+    console.log('POST /api/squad-messages - Body:', req.body);
     await connectToDatabase();
     
     const { squadId, message, sender, senderId, timestamp } = req.body;
@@ -493,6 +542,7 @@ app.post('/api/squad-messages', async (req, res) => {
     
     // Save to database
     await chatMessage.save();
+    console.log('Message saved to database with ID:', chatMessage._id);
     
     // Emit to socket clients if needed
     if (io) {
@@ -514,47 +564,23 @@ app.post('/api/squad-messages', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to send message',
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
 
-// Update the GET endpoint to retrieve messages with "since" parameter
-app.get('/api/squad-messages', async (req, res) => {
-  try {
-    await connectToDatabase();
-    
-    const { squadId, since } = req.query;
-    
-    // Build the query
-    const query = {};
-    
-    // Add squadId filter if provided
-    if (squadId) {
-      query.squadId = squadId;
-    }
-    
-    // Add timestamp filter if "since" parameter is provided
-    if (since) {
-      query.timestamp = { $gt: new Date(since) };
-    }
-    
-    // Get messages
-    const messages = await SquadChat.find(query)
-      .sort({ timestamp: 1 }) // Sort by timestamp ascending
-      .limit(50)
-      .populate('sender', 'username fullName')
-      .lean();
-    
-    res.json(messages);
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch messages',
-      error: error.message
-    });
-  }
+// Add a server info endpoint for debugging
+app.get('/api/server-info', (req, res) => {
+  res.json({
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+    hostname: req.hostname,
+    headers: req.headers,
+    nodeVersion: process.version,
+    memoryUsage: process.memoryUsage(),
+    uptime: process.uptime()
+  });
 });
 
 // For local development
