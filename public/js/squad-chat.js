@@ -14,10 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Rest of your code...
 });
 
-// Check if socket is already defined before creating a new one
+// Update socket connection to prioritize polling
 if (typeof window.socket === 'undefined') {
   window.socket = io(window.location.origin, {
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'], // Prioritize polling over websockets
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000
