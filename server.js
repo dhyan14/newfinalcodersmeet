@@ -471,11 +471,22 @@ app.post('/api/squad-messages', async (req, res) => {
     
     const { squadId, message, sender, senderId, timestamp } = req.body;
     
+    // Validate required fields
+    if (!squadId || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Squad ID and message are required',
+        error: 'Missing required fields'
+      });
+    }
+    
+    console.log('Received message:', { squadId, message, sender });
+    
     // Create new message
     const chatMessage = new SquadChat({
       squadId: squadId,
       sender: senderId || 'anonymous',
-      senderName: sender,
+      senderName: sender || 'Anonymous',
       content: message,
       timestamp: timestamp || new Date()
     });
