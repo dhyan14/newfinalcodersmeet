@@ -508,22 +508,34 @@ app.post('/api/squad-messages', async (req, res) => {
   }
 });
 
-// Add GET endpoint to retrieve messages
+// Update the GET endpoint to retrieve messages with "since" parameter
 app.get('/api/squad-messages', async (req, res) => {
   try {
     await connectToDatabase();
     
-    const { squadId } = req.query;
-    const query = squadId ? { squadId } : {};
+    const { squadId, since } = req.query;
     
-    // Get recent messages
+    // Build the query
+    const query = {};
+    
+    // Add squadId filter if provided
+    if (squadId) {
+      query.squadId = squadId;
+    }
+    
+    // Add timestamp filter if "since" parameter is provided
+    if (since) {
+      query.timestamp = { $gt: new Date(since) };
+    }
+    
+    // Get messages
     const messages = await SquadChat.find(query)
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: 1 }) // Sort by timestamp ascending
       .limit(50)
       .populate('sender', 'username fullName')
       .lean();
     
-    res.json(messages.reverse());
+    res.json(messages);
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({
