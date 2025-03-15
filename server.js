@@ -3,8 +3,6 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
-const http = require('http');
-const { Server } = require('socket.io');
 
 // Import models
 const User = require('./models/User');
@@ -12,110 +10,7 @@ const Message = require('./models/Message');
 const FriendRequest = require('./models/FriendRequest');
 const SquadChat = require('./models/SquadChat');
 
-// Create Express app and HTTP server
 const app = express();
-const server = http.createServer(app);
-
-// Configure CORS first, before any routes
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
-});
-
-// Add this to your chat-server.js
-const isProduction = process.env.NODE_ENV === 'production';
-console.log(`Running in ${isProduction ? 'production' : 'development'} mode`);
-
-// Configure Socket.IO differently based on environment
-const io = new Server(server, {
-  cors: {
-    // In production, be more restrictive about origins
-    origin: isProduction 
-      ? ['https://www.dhyanjain.me', 'https://newfinalcodersmeet.vercel.app'] 
-      : '*',
-    methods: ["GET", "POST"],
-    credentials: true
-  },
-  transports: ['polling'], // Prioritize polling for Vercel
-  pingTimeout: 10000,
-  pingInterval: 3000
-});
-
-// Add Socket.IO connection handling with better error handling
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
-  });
-
-  // Handle joining squad room with error handling
-  socket.on('join-squad', async (squadId) => {
-    try {
-      if (!squadId) {
-        throw new Error('Squad ID is required');
-      }
-
-      const roomName = `squad_${squadId}`;
-      await socket.join(roomName);
-      console.log(`Socket ${socket.id} joined room: ${roomName}`);
-
-      // Load previous messages
-      const messages = await SquadChat.find({ squadId })
-        .sort({ timestamp: -1 })
-        .limit(50)
-        .populate('sender', 'username fullName')
-        .lean();
-
-      socket.emit('chat-history', messages.reverse());
-    } catch (error) {
-      console.error('Error joining squad:', error);
-      socket.emit('chat-error', { message: error.message });
-    }
-  });
-
-  // Handle chat messages
-  socket.on('squad-message', async (data) => {
-    try {
-      if (!data.squadId || !data.message) {
-        throw new Error('Invalid message data');
-      }
-
-      const message = new SquadChat({
-        squadId: data.squadId,
-        sender: data.senderId,
-        senderName: data.sender || 'Anonymous',
-        content: data.message,
-        timestamp: new Date()
-      });
-
-      await message.save();
-
-      // Broadcast to room
-      io.to(`squad_${data.squadId}`).emit('new-message', {
-        id: message._id,
-        squadId: message.squadId,
-        sender: message.sender,
-        senderName: message.senderName,
-        content: message.content,
-        timestamp: message.timestamp
-      });
-
-    } catch (error) {
-      console.error('Error handling message:', error);
-      socket.emit('chat-error', { message: 'Failed to send message' });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-});
 
 // Update CORS configuration
 const corsOptions = {
@@ -129,31 +24,12 @@ const corsOptions = {
 };
 
 // Apply CORS middleware
-app.use(cors({
-  origin: '*', // In development allow all origins
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
-// Make sure OPTIONS requests are handled properly
-app.options('*', cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Other middleware
 app.use(express.json());
-app.use(express.static('public', {
-    setHeaders: (res, path) => {
-        if (path.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript');
-        } else if (path.endsWith('.css')) {
-            res.setHeader('Content-Type', 'text/css');
-        } else if (path.endsWith('.html')) {
-            res.setHeader('Content-Type', 'text/html');
-        } else if (path.endsWith('.json')) {
-            res.setHeader('Content-Type', 'application/json');
-        }
-    }
-}));
+app.use(express.static('public'));
 
 // Add better error logging
 app.use((req, res, next) => {
@@ -161,79 +37,27 @@ app.use((req, res, next) => {
     next();
 });
 
-// Add explicit MIME type handling
-app.use((req, res, next) => {
-  const url = req.url;
-  
-  if (url.endsWith('.js')) {
-    res.setHeader('Content-Type', 'application/javascript');
-  } else if (url.endsWith('.css')) {
-    res.setHeader('Content-Type', 'text/css');
-  } else if (url.endsWith('.html')) {
-    res.setHeader('Content-Type', 'text/html');
-  } else if (url.endsWith('.json')) {
-    res.setHeader('Content-Type', 'application/json');
-  }
-  
-  next();
-});
+// MongoDB Connection
+let isConnected = false;
 
-// Add specific routes for key files
-app.get('/js/squad-chat.js', (req, res) => {
-    res.setHeader('Content-Type', 'application/javascript');
-    res.sendFile(path.join(__dirname, 'public', 'js', 'squad-chat.js'));
-});
+const connectToDatabase = async () => {
+    if (isConnected) return;
 
-app.get('/js/fallback-chat.js', (req, res) => {
-    res.setHeader('Content-Type', 'application/javascript');
-    res.sendFile(path.join(__dirname, 'public', 'js', 'fallback-chat.js'));
-});
-
-app.get('/socket.io/socket.io.js', (req, res) => {
-    res.setHeader('Content-Type', 'application/javascript');
-    res.sendFile(path.join(__dirname, 'node_modules', 'socket.io', 'client-dist', 'socket.io.js'));
-});
-
-// Add proper error handling for static files
-app.use((err, req, res, next) => {
-    if (err.code === 'ENOENT') {
-        res.status(404).json({ error: 'File not found' });
-    } else {
-        console.error('Server error:', err);
-        res.status(500).json({
-            error: true,
-            message: process.env.NODE_ENV === 'production' 
-                ? 'Internal server error' 
-                : err.message
+    try {
+        console.log('Connecting to MongoDB...');
+        await mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 10000
         });
+        isConnected = true;
+        console.log('MongoDB Connected');
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        isConnected = false;
+        throw error;
     }
-});
-
-// Add this near the top of server.js or in a separate file
-let cachedDb = null;
-
-async function connectToDatabase() {
-  if (cachedDb) {
-    return cachedDb;
-  }
-
-  const client = await mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    maxPoolSize: 10, // Limit connections for serverless
-    serverSelectionTimeoutMS: 5000
-  });
-
-  cachedDb = mongoose.connection;
-  
-  // Handle connection errors
-  cachedDb.on('error', (err) => {
-    console.error('MongoDB connection error:', err);
-    cachedDb = null;
-  });
-
-  return cachedDb;
-}
+};
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -247,7 +71,7 @@ app.get('/api/status', async (req, res) => {
         res.json({
             status: 'ok',
             server: true,
-            database: cachedDb ? true : false,
+            database: isConnected,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
@@ -415,227 +239,48 @@ app.get('/*.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
-// Get user by email
-app.get('/api/user-by-email', async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { email } = req.query;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-    
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    res.json(user);
-  } catch (error) {
-    console.error('Error fetching user by email:', error);
-    res.status(500).json({ error: 'Failed to fetch user', details: error.message });
-  }
+// Catch-all route
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Get friends by user ID
-app.get('/api/friends', async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { userId } = req.query;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
-    }
-    
-    // Find the user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Get friends (assuming you have a connections array in your User model)
-    const friends = await User.find({ _id: { $in: user.connections || [] } });
-    
-    res.json(friends);
-  } catch (error) {
-    console.error('Error fetching friends:', error);
-    res.status(500).json({ error: 'Failed to fetch friends', details: error.message });
-  }
-});
-
-// Search users
-app.get('/api/search-users', async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { term } = req.query;
-    
-    if (!term) {
-      return res.status(400).json({ error: 'Search term is required' });
-    }
-    
-    const users = await User.find({
-      $or: [
-        { username: { $regex: term, $options: 'i' } },
-        { fullName: { $regex: term, $options: 'i' } },
-        { email: { $regex: term, $options: 'i' } }
-      ]
-    }).limit(10);
-    
-    res.json(users);
-  } catch (error) {
-    console.error('Error searching users:', error);
-    res.status(500).json({ error: 'Failed to search users', details: error.message });
-  }
-});
-
-// Update your catch-all route to only handle HTML requests, not API requests
-app.get('*', (req, res, next) => {
-  // Skip API routes - they should be handled by their own handlers
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-  
-  // For non-API routes, serve the index.html file
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Add a specific 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: 'API endpoint not found',
-    path: req.path
-  });
-});
-
-// Add error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({
-    error: true,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
-      : err.message
-  });
-});
-
-// Update the GET endpoint to retrieve messages with "since" parameter
-app.get('/api/squad-messages', async (req, res) => {
-  try {
-    await connectToDatabase();
+    console.error('Error:', err);
     
-    const { squadId, since } = req.query;
-    
-    // Build the query
-    const query = {};
-    
-    // Add squadId filter if provided
-    if (squadId) {
-      query.squadId = squadId;
+    // Handle specific errors
+    if (err.name === 'MongoError' || err.name === 'MongooseError') {
+        return res.status(500).json({
+            status: 'error',
+            message: 'Database error occurred',
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
     
-    // Add timestamp filter if "since" parameter is provided
-    if (since) {
-      try {
-        query.timestamp = { $gt: new Date(since) };
-      } catch (e) {
-        console.error('Invalid date format for since parameter:', since, e);
-      }
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Validation failed',
+            details: err.message
+        });
     }
     
-    console.log('MongoDB query:', JSON.stringify(query));
-    
-    // Get messages
-    const messages = await SquadChat.find(query)
-      .sort({ timestamp: 1 }) // Sort by timestamp ascending
-      .limit(50)
-      .populate('sender', 'username fullName')
-      .lean();
-    
-    console.log(`Found ${messages.length} messages`);
-    
-    res.json(messages);
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update the POST endpoint for messages
-app.post('/api/squad-messages', async (req, res) => {
-  try {
-    console.log('POST /api/squad-messages - Body:', req.body);
-    await connectToDatabase();
-    
-    const { squadId, message, sender, senderId, timestamp } = req.body;
-    
-    // Validate required fields
-    if (!squadId || !message) {
-      return res.status(400).json({
-        success: false,
-        message: 'Squad ID and message are required',
-        error: 'Missing required fields'
-      });
-    }
-    
-    console.log('Received message:', { squadId, message, sender });
-    
-    // Create new message
-    const chatMessage = new SquadChat({
-      squadId: squadId,
-      sender: senderId || 'anonymous',
-      senderName: sender || 'Anonymous',
-      content: message,
-      timestamp: timestamp || new Date()
-    });
-    
-    // Save to database
-    await chatMessage.save();
-    console.log('Message saved to database with ID:', chatMessage._id);
-    
-    // Emit to socket clients if needed
-    if (io) {
-      io.to(`squad_${squadId}`).emit('new-message', {
-        id: chatMessage._id,
-        squadId,
-        message,
-        sender,
-        senderName: chatMessage.senderName,
-        timestamp: chatMessage.timestamp
-      });
-    }
-    
-    res.status(201).json({
-      success: true,
-      message: 'Message sent successfully',
-      data: chatMessage
-    });
-  } catch (error) {
-    console.error('Error saving message:', error);
+    // Default error response
     res.status(500).json({
-      success: false,
-      message: 'Failed to send message',
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        status: 'error',
+        message: err.message || 'Internal server error',
+        timestamp: new Date().toISOString()
     });
-  }
 });
 
-// Add server info endpoint with error handling
-app.get('/api/server-info', (req, res) => {
-  res.json({
-    status: 'ok',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString()
-  });
+// Add this to handle 404s
+app.use((req, res) => {
+    res.status(404).json({
+        status: 'error',
+        message: 'Not Found',
+        path: req.path
+    });
 });
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// For Vercel, export the Express app
+// Export the app
 module.exports = app; 

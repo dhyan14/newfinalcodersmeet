@@ -368,14 +368,10 @@
     </div>
     <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
     <script>
-        // Make sure AOS is initialized only after it's loaded
+        AOS.init();
+        
+        // Check server connection on page load
         document.addEventListener('DOMContentLoaded', async function() {
-            // Initialize AOS only if it exists
-            if (typeof AOS !== 'undefined') {
-                AOS.init();
-            }
-            
-            // Check server connection on page load
             try {
                 const serverStatus = document.getElementById('server-status');
                 const isConnected = await window.AppConnection.checkHealth();
@@ -392,71 +388,59 @@
                     serverStatus.style.color = 'red';
                 }
             }
-            
-            // Move username check initialization here
-            window.isUsernameAvailable = false;
-            
-            const usernameInput = document.getElementById('username');
-            const checkButton = document.getElementById('checkUsernameBtn');
-            const availabilityDiv = document.getElementById('usernameAvailability');
-            const signupForm = document.getElementById('signupForm');
-            
-            // Define checkUsernameAvailability inside the DOMContentLoaded to ensure button access
-            window.checkUsernameAvailability = async function() {
-                const username = usernameInput.value.trim();
-                
-                if (!username) {
-                    availabilityDiv.innerHTML = '<span style="color: red;">Please enter a username</span>';
-                    return;
-                }
-
-                try {
-                    checkButton.disabled = true;
-                    checkButton.innerHTML = 'Checking...';
-                    
-                    // Use AppConnection for API requests
-                    const data = await window.AppConnection.request('/api/check-username', {
-                        method: 'POST',
-                        body: JSON.stringify({ username })
-                    });
-                    
-                    if (data.available) {
-                        availabilityDiv.innerHTML = '<span style="color: green;">✓ Username is available!</span>';
-                        window.isUsernameAvailable = true;
-                    } else {
-                        availabilityDiv.innerHTML = '<span style="color: red;">✗ Username is already taken</span>';
-                        window.isUsernameAvailable = false;
-                    }
-                } catch (error) {
-                    console.error('Error checking username:', error);
-                    availabilityDiv.innerHTML = '<span style="color: red;">Error checking username</span>';
-                } finally {
-                    checkButton.disabled = false;
-                    checkButton.innerHTML = 'Check';
-                }
-            };
-            
-            // Add event listeners after DOM is loaded
-            checkButton.addEventListener('click', window.checkUsernameAvailability);
-            
-            usernameInput.addEventListener('input', function() {
-                window.isUsernameAvailable = false;
-                availabilityDiv.innerHTML = '';
-            });
-            
-            signupForm.addEventListener('submit', handleSignup);
         });
         
+        let isUsernameAvailable = false;
+        
+        const usernameInput = document.getElementById('username');
+        const checkButton = document.getElementById('checkUsernameBtn');
+        const availabilityDiv = document.getElementById('usernameAvailability');
+        const signupForm = document.getElementById('signupForm');
+        
+        async function checkUsernameAvailability() {
+            const username = usernameInput.value.trim();
+            
+            if (!username) {
+                availabilityDiv.innerHTML = '<span style="color: red;">Please enter a username</span>';
+                return;
+            }
+
+            try {
+                checkButton.disabled = true;
+                checkButton.innerHTML = 'Checking...';
+                
+                // Use AppConnection for API requests
+                const data = await window.AppConnection.request('/api/check-username', {
+                    method: 'POST',
+                    body: JSON.stringify({ username })
+                });
+                
+                if (data.available) {
+                    availabilityDiv.innerHTML = '<span style="color: green;">✓ Username is available!</span>';
+                    isUsernameAvailable = true;
+                } else {
+                    availabilityDiv.innerHTML = '<span style="color: red;">✗ Username is already taken</span>';
+                    isUsernameAvailable = false;
+                }
+            } catch (error) {
+                console.error('Error checking username:', error);
+                availabilityDiv.innerHTML = '<span style="color: red;">Error checking username</span>';
+            } finally {
+                checkButton.disabled = false;
+                checkButton.innerHTML = 'Check';
+            }
+        }
+
         async function handleSignup(event) {
             event.preventDefault();
             
-            if (!window.isUsernameAvailable) {
+            if (!isUsernameAvailable) {
                 alert('Please check username availability first');
                 return;
             }
 
             const fullName = document.getElementById('fullName').value.trim();
-            const username = document.getElementById('username').value.trim();
+            const username = usernameInput.value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
@@ -499,6 +483,15 @@
                 signupBtn.disabled = false;
             }
         }
+
+        checkButton.addEventListener('click', checkUsernameAvailability);
+        
+        usernameInput.addEventListener('input', function() {
+            isUsernameAvailable = false;
+            availabilityDiv.innerHTML = '';
+        });
+        
+        signupForm.addEventListener('submit', handleSignup);
         
         function hamburg() {
             document.querySelector('.dropdown').style.display = 'block';

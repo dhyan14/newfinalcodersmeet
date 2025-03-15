@@ -45,44 +45,53 @@
         },
         
         // API request helper
-        request: async function(endpoint, method = 'GET', data = null) {
+        request: async function(endpoint, options = {}) {
+            const url = `${this.baseURL}${endpoint}`;
+            console.log(`API request to: ${url}`);
+            
             try {
-                // Make sure endpoint starts with a slash
-                if (!endpoint.startsWith('/')) {
-                    endpoint = '/' + endpoint;
-                }
+                // Add timeout to prevent hanging requests
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
                 
-                const url = `${this.baseURL}${endpoint}`;
-                console.log(`Making ${method} request to: ${url}`);
-                
-                const options = {
-                    method: method,
+                const response = await fetch(url, {
+                    ...options,
                     headers: {
-                        'Content-Type': 'application/json'
-                    }
-                };
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    signal: controller.signal
+                });
                 
-                if (data) {
-                    options.body = JSON.stringify(data);
+                clearTimeout(timeoutId);
+                
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    console.error('Error parsing response:', e);
+                    throw new Error('Invalid server response');
                 }
-                
-                const response = await fetch(url, options);
-                const responseData = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(responseData.message || 'Request failed');
+                    throw new Error(data.error || data.message || `Request failed: ${response.status}`);
                 }
                 
-                return responseData;
+                return data;
             } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.error(`Request timeout for ${endpoint}`);
+                    throw new Error('Request timed out. Server may be unavailable.');
+                }
+                
+                if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+                    console.error(`Network error for ${endpoint}`);
+                    throw new Error('Network error. Please check your connection.');
+                }
+                
                 console.error(`API error (${endpoint}):`, error);
-                throw error; // Re-throw the error for the caller to handle
+                throw error;
             }
-        },
-        
-        // Login method
-        login: async function(email, password) {
-            return this.request(this.endpoints.login, 'POST', { email, password });
         },
         
         // Show connection error message

@@ -33,19 +33,19 @@
                 <form id="loginForm">
                     <div class="form-group">
                         <i class="fa-solid fa-envelope"></i>
-                        <input type="email" id="email" placeholder="Email Address" required>
+                        <input type="email" id="loginEmail" placeholder="Email Address" required>
                     </div>
                     <div class="form-group">
                         <i class="fa-solid fa-lock"></i>
-                        <input type="password" id="password" placeholder="Password" required>
+                        <input type="password" id="loginPassword" placeholder="Password" required>
                     </div>
-                    <button type="submit" class="login-btn" id="loginBtn">Login</button>
+                    <button type="submit" class="login-btn">Login</button>
                     <p class="signup-text">
                         Don't have an account? <a href="signup.html">Sign up</a>
                     </p>
                 </form>
                 <div id="server-status" class="server-status"></div>
-                <div id="errorMsg" class="error-message"></div>
+                <div id="loginError" class="error-message"></div>
             </div>
         </div>
     </section>
@@ -72,33 +72,55 @@
         });
 
         // Login form handler
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
             
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('errorMsg');
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.querySelector('.login-btn');
+            const errorDiv = document.getElementById('loginError');
+            
+            if (!email || !password) {
+                errorDiv.textContent = 'Please enter both email and password';
+                return;
+            }
             
             try {
-                // Clear any previous error
-                errorMsg.textContent = '';
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                errorDiv.textContent = '';
                 
-                // Show loading state
-                document.getElementById('loginBtn').textContent = 'Logging in...';
+                const data = await window.AppConnection.request('/api/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
                 
-                // Use the AppConnection login method
-                const response = await window.AppConnection.login(email, password);
+                console.log('Login response:', data); // Debug log
                 
-                // Store user data in localStorage
-                localStorage.setItem('user', JSON.stringify(response.data.user));
-                localStorage.setItem('token', response.data.token);
-                
-                // Redirect to dashboard
-                window.location.href = 'dashboard.html';
+                // Store user data with the correct structure
+                if (data.success && data.user) {
+                    // Store user data
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Show welcome message
+                    document.getElementById('userName').textContent = data.user.fullName;
+                    document.getElementById('welcomeMessage').style.display = 'block';
+                    
+                    loginBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+                    
+                    // Delay redirect to show welcome message
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
+                } else {
+                    throw new Error('Invalid login response');
+                }
             } catch (error) {
                 console.error('Login error:', error);
-                errorMsg.textContent = error.message || 'Login failed. Please try again.';
-                document.getElementById('loginBtn').textContent = 'Login';
+                errorDiv.textContent = error.message || 'Login failed';
+                loginBtn.innerHTML = 'Login';
+            } finally {
+                loginBtn.disabled = false;
             }
         });
     </script>
