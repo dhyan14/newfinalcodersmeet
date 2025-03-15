@@ -88,11 +88,11 @@
         <form id="adminLoginForm">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
+                <input type="email" id="email" name="email" value="admin@codersmeet.com" required>
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" value="admin@codersmeet.com" required>
             </div>
             <button type="submit">Login</button>
         </form>
@@ -116,49 +116,12 @@
         const welcomeMessage = document.getElementById('welcomeMessage');
         const logoutBtn = document.getElementById('logoutBtn');
         
-        // Check authentication using the direct endpoint
-        function checkAuth() {
-            console.log('Checking auth status...');
-            
-            fetch('/api/admin-ping-direct', {
-                method: 'GET',
-                credentials: 'include'
-            })
-            .then(response => {
-                console.log('Auth response status:', response.status);
-                return response.text();
-            })
-            .then(text => {
-                console.log('Raw response:', text);
-                
-                try {
-                    const data = JSON.parse(text);
-                    console.log('Parsed response:', data);
-                    
-                    if (data.isAdmin) {
-                        // Show dashboard
-                        loginFormContainer.classList.add('d-none');
-                        dashboardContainer.classList.remove('d-none');
-                    } else {
-                        // Show login form
-                        loginFormContainer.classList.remove('d-none');
-                        dashboardContainer.classList.add('d-none');
-                    }
-                } catch (e) {
-                    console.error('Error parsing JSON:', e);
-                    loginFormContainer.classList.remove('d-none');
-                    dashboardContainer.classList.add('d-none');
-                }
-            })
-            .catch(error => {
-                console.error('Auth check error:', error);
-                loginFormContainer.classList.remove('d-none');
-                dashboardContainer.classList.add('d-none');
-            });
-        }
-        
-        // Call the check on page load
-        document.addEventListener('DOMContentLoaded', checkAuth);
+        // Skip auth check and just show login form by default
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Admin dashboard loaded, showing login form');
+            loginFormContainer.classList.remove('d-none');
+            dashboardContainer.classList.add('d-none');
+        });
         
         // Handle login form submission
         loginForm.addEventListener('submit', function(e) {
@@ -179,12 +142,22 @@
                 credentials: 'include'
             })
             .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        throw new Error(data.error || 'Login failed');
-                    });
-                }
-                return response.json();
+                console.log('Login response status:', response.status);
+                
+                return response.text().then(text => {
+                    console.log('Login response text:', text);
+                    
+                    try {
+                        const data = JSON.parse(text);
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Login failed');
+                        }
+                        return data;
+                    } catch (e) {
+                        console.error('Error parsing login response:', e);
+                        throw new Error('Invalid response format');
+                    }
+                });
             })
             .then(data => {
                 console.log('Login successful:', data);
