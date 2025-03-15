@@ -831,7 +831,18 @@
                             
                         } catch (error) {
                             console.error('Error processing location:', error);
-                            handleLocationError(error);
+                            const errorMessage = error.message || 'Unknown error occurred';
+                            
+                            // Add more detailed error message
+                            locationStatus.innerHTML = `
+                                <div class="error-message">
+                                    <h4>Error Finding Nearby Coders</h4>
+                                    <p>${errorMessage}</p>
+                                    <button onclick="loadNearbyUsers()" class="enable-location-btn">
+                                        <i class="fas fa-redo"></i> Try Again
+                                    </button>
+                                </div>
+                            `;
                         }
                     },
                     function(error) {

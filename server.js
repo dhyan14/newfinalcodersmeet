@@ -198,6 +198,58 @@ app.post('/api/check-username', async (req, res) => {
     }
 });
 
+// Get nearby users endpoint - simplified version
+app.get('/api/users/nearby-by-email', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { email, latitude, longitude } = req.query;
+        
+        console.log('Nearby request params:', { email, latitude, longitude });
+        
+        if (!email || !latitude || !longitude) {
+            return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
+        }
+        
+        // Find the current user to exclude them from results
+        const currentUser = await User.findOne({ email });
+        if (!currentUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log('Current user found:', currentUser._id);
+        
+        // Get all users except current user - no location filtering
+        const allUsers = await User.find({ 
+            _id: { $ne: currentUser._id } 
+        }).limit(20);
+        
+        // Add mock distance calculation
+        const usersWithDistance = allUsers.map(user => {
+            return {
+                _id: user._id,
+                fullName: user.fullName,
+                username: user.username,
+                email: user.email,
+                distance: Math.random() * 10 // Random distance between 0-10km
+            };
+        });
+        
+        // Return results
+        res.json([
+            {
+                range: 10,
+                users: usersWithDistance
+            }
+        ]);
+    } catch (error) {
+        console.error('Error finding nearby users:', error);
+        res.status(500).json({ 
+            error: 'Failed to find nearby users', 
+            details: error.message 
+        });
+    }
+});
+
 // Get user by ID
 app.get('/api/users/:id', async (req, res) => {
     try {
@@ -269,105 +321,6 @@ app.post('/api/users/location-by-email', async (req, res) => {
     } catch (error) {
         console.error('[Vercel] Error updating location:', error);
         res.status(500).json({ error: 'Failed to update location', details: error.message });
-    }
-});
-
-// Get nearby users - add debugging
-app.get('/api/users/nearby-by-email', async (req, res) => {
-    try {
-        await connectToDatabase();
-        const { email, latitude, longitude } = req.query;
-        
-        console.log('Nearby request params:', { email, latitude, longitude }); // Debug log
-        
-        if (!email || !latitude || !longitude) {
-            return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
-        }
-        
-        // Find the current user to exclude them from results
-        const currentUser = await User.findOne({ email });
-        if (!currentUser) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        
-        console.log('Current user found:', currentUser._id); // Debug log
-        
-        // Define search ranges in kilometers
-        const ranges = [1, 5, 10]; // 1km, 5km, 10km ranges
-        const results = [];
-        
-        // Convert from string to number
-        const lat = parseFloat(latitude);
-        const lng = parseFloat(longitude);
-        
-        console.log('Parsed coordinates:', { lat, lng }); // Debug log
-        
-        // Simpler approach without $geoNear first to test
-        const allUsers = await User.find({ 
-            _id: { $ne: currentUser._id }
-        }).limit(10);
-        
-        console.log(`Found ${allUsers.length} other users in total`); // Debug log
-        
-        // Return simple results for now
-        res.json([
-            {
-                range: 10,
-                users: allUsers.map(user => ({
-                    _id: user._id,
-                    fullName: user.fullName,
-                    username: user.username,
-                    email: user.email,
-                    distance: 5 // Mock distance
-                }))
-            }
-        ]);
-        
-        /* Comment out the complex query for now
-        // For each range, find users within that distance
-        for (const range of ranges) {
-            // Use MongoDB's $geoNear aggregation to find nearby users
-            const nearbyUsers = await User.aggregate([
-                {
-                    $geoNear: {
-                        near: {
-                            type: 'Point',
-                            coordinates: [lng, lat] // GeoJSON format: [longitude, latitude]
-                        },
-                        distanceField: 'distance', // This will add the distance in meters to each result
-                        maxDistance: range * 1000, // Convert km to meters
-                        spherical: true,
-                        query: { 
-                            _id: { $ne: currentUser._id }, // Exclude current user
-                            lastLocationUpdate: { 
-                                $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Only include users active in the last 24 hours
-                            }
-                        }
-                    }
-                },
-                {
-                    $project: {
-                        _id: 1,
-                        fullName: 1,
-                        username: 1,
-                        email: 1,
-                        distance: { $divide: ['$distance', 1000] }, // Convert meters to kilometers
-                        lastLocationUpdate: 1
-                    }
-                }
-            ]);
-            
-            results.push({
-                range,
-                users: nearbyUsers
-            });
-        }
-        
-        res.json(results);
-        */
-    } catch (error) {
-        console.error('Error finding nearby users:', error);
-        res.status(500).json({ error: 'Failed to find nearby users', details: error.message });
     }
 });
 
@@ -600,6 +553,26 @@ app.use((req, res) => {
         message: 'Not Found',
         path: req.path
     });
+});
+
+// Add this after the connectToDatabase function to test the connection
+app.get('/api/test-db', async (req, res) => {
+    try {
+        await connectToDatabase();
+        // Try a simple query
+        const count = await User.countDocuments();
+        res.json({
+            success: true,
+            message: 'Database connection successful',
+            userCount: count
+        });
+    } catch (error) {
+        console.error('Database test error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
 });
 
 // Just keep the export
