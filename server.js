@@ -554,5 +554,11 @@ app.use((req, res) => {
     });
 });
 
-// Export the app
+// After all your routes and middleware...
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Keep the module.exports if needed for testing
 module.exports = app; 
