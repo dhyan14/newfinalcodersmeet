@@ -49,7 +49,11 @@ app.use('/api', friendRequestRoutes);
 
 // Root route
 app.get('/', (req, res) => {
-  res.send('CodersMEET API is running');
+  res.json({ 
+    status: 'ok', 
+    message: 'CodersMEET API is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // For Vercel, we export the Express app

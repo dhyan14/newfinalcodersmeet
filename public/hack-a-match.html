@@ -740,7 +740,7 @@
                             `;
 
                             // Step 1: Update user's location in database
-                            const locationUpdateResponse = await fetch(`${API_BASE_URL}/api/users/update-location`, {
+                            const locationUpdateResponse = await fetch(`${API_BASE_URL}/users/update-location`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -757,7 +757,7 @@
                             
                             // Step 2: Fetch nearby users based on updated location
                             const nearbyUsersResponse = await fetch(
-                                `${API_BASE_URL}/api/users/nearby?email=${encodeURIComponent(currentUser.email)}`
+                                `${API_BASE_URL}/users/nearby?email=${encodeURIComponent(currentUser.email)}`
                             );
                             
                             if (!nearbyUsersResponse.ok) {
@@ -947,7 +947,7 @@
                     return;
                 }
                 
-                const response = await fetch(`${API_BASE_URL}/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
+                const response = await fetch(`${API_BASE_URL}/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
                 if (!response.ok) {
                     throw new Error('Failed to load friend requests');
                 }
@@ -1009,7 +1009,7 @@
         // Handle accept/reject actions
         async function respondToRequest(requestId, action) {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/friend-request-response`, {
+                const response = await fetch(`${API_BASE_URL}/friend-request-response`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
