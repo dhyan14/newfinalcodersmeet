@@ -28,7 +28,8 @@ router.post('/login', async (req, res) => {
     // Check if user exists and has admin role
     const user = await getUserByEmail(email);
     
-    if (!user || user.role !== 'admin' || !(await comparePasswords(password, user.password))) {
+    // Check for either role='admin' OR isAdmin=true to handle both
+    if (!user || (user.role !== 'admin' && !user.isAdmin) || !(await comparePasswords(password, user.password))) {
       return res.status(401).json({ error: 'Invalid admin credentials' });
     }
     

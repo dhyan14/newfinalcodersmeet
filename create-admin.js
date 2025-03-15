@@ -13,9 +13,10 @@ mongoose.connect(MONGODB_URI, {
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Admin user details - CHANGE THESE!
-const adminEmail = 'admin@example.com';
-const adminPassword = 'admin123'; // Use a strong password in production!
-const adminName = 'Admin User';
+const adminEmail = 'admin@gmail.com';
+const adminPassword = 'admin1admin@gmail.com23'; // Use a strong password in production!
+const adminFullName = 'ADMIN';
+const adminUsername = 'Admin1'; // This is required in your schema
 
 async function createAdminUser() {
   try {
@@ -29,10 +30,12 @@ async function createAdminUser() {
     
     // Create new admin user
     const adminUser = new User({
-      name: adminName,
+      fullName: adminFullName,       // Changed from name to fullName
+      username: adminUsername,       // Added username which is required
       email: adminEmail,
-      password: adminPassword, // In production, hash this password with bcrypt
-      role: 'admin'
+      password: adminPassword,       // In production, hash this password with bcrypt
+      role: 'admin',
+      isAdmin: true                  // Setting both role and isAdmin for compatibility
     });
     
     await adminUser.save();
