@@ -302,14 +302,24 @@
     init: function() {
       try {
         console.log('Initializing fallback chat...');
+        
+        // Get squad ID with more fallbacks
         this.squadId = document.getElementById('squad-id')?.value || 
-                      window.location.pathname.split('/').pop().replace('.html', '');
+                      document.querySelector('[data-squad-id]')?.dataset.squadId ||
+                      new URLSearchParams(window.location.search).get('squadId') ||
+                      'squad'; // Default fallback
         
-        const userData = localStorage.getItem('user');
-        this.currentUser = userData ? JSON.parse(userData).username : 'Anonymous';
+        console.log('Fallback using squad ID:', this.squadId);
         
-        console.log('Fallback Chat - Squad ID:', this.squadId);
-        console.log('Fallback Chat - Current user:', this.currentUser);
+        // Get user info
+        let userData;
+        try {
+          userData = JSON.parse(localStorage.getItem('user') || '{}');
+        } catch (e) {
+          userData = { username: 'Anonymous' };
+        }
+        
+        this.currentUser = userData.username || 'Anonymous';
         
         this.setupEventListeners();
         return true;
@@ -317,6 +327,26 @@
         console.error('Fallback chat initialization error:', error);
         return false;
       }
+    },
+
+    setupEventListeners: function() {
+      // Set up event listeners for the chat interface
+      const sendButton = document.getElementById('send-button');
+      if (sendButton) {
+        sendButton.addEventListener('click', () => this.sendMessage());
+      }
+      
+      const messageInput = document.getElementById('message-input');
+      if (messageInput) {
+        messageInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.sendMessage();
+          }
+        });
+      }
+      
+      console.log('Fallback chat event listeners set up');
     },
 
     setLocalStorage: function(value) {
@@ -376,23 +406,65 @@
 
     sendMessage: function() {
       const input = document.getElementById('message-input');
-      const message = input.value.trim();
+      if (!input) return;
       
+      const message = input.value.trim();
       if (!message) return;
       
+      // Create message object
       const messageData = {
+        squadId: this.squadId,
         content: message,
         sender: this.currentUser,
         timestamp: new Date().toISOString()
       };
-
-      if (this.useLocalStorage) {
-        this.saveMessageToLocalStorage(messageData);
-      } else {
-        this.saveMessageToAPI(messageData);
-      }
-
+      
+      // Save to localStorage
+      this.saveMessageToLocalStorage(messageData);
+      
+      // Display the message
+      this.displayMessage(messageData);
+      
+      // Clear input
       input.value = '';
+    },
+
+    saveMessageToLocalStorage: function(message) {
+      // Get existing messages
+      const storageKey = `chat_messages_${this.squadId}`;
+      let messages = [];
+      
+      try {
+        messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      } catch (e) {
+        console.error('Error parsing stored messages:', e);
+      }
+      
+      // Add new message
+      messages.push(message);
+      
+      // Save back to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+      console.log('Message saved to localStorage');
+    },
+
+    displayMessage: function(message) {
+      const container = document.getElementById('chat-messages');
+      if (!container) return;
+      
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${message.sender === this.currentUser ? 'sent' : 'received'}`;
+      
+      const time = new Date(message.timestamp).toLocaleTimeString();
+      
+      messageEl.innerHTML = `
+        ${message.sender !== this.currentUser ? `<div class="message-sender">${message.sender}</div>` : ''}
+        <div class="message-content">${message.content || message.message}</div>
+        <div class="message-time">${time}</div>
+      `;
+      
+      container.appendChild(messageEl);
+      container.scrollTop = container.scrollHeight;
     },
 
     // Add more methods as needed

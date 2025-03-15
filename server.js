@@ -112,8 +112,15 @@ const corsOptions = {
 };
 
 // Apply CORS middleware
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.use(cors({
+  origin: '*', // In development allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Make sure OPTIONS requests are handled properly
+app.options('*', cors());
 
 // Other middleware
 app.use(express.json());
@@ -601,25 +608,16 @@ app.post('/api/squad-messages', async (req, res) => {
 
 // Add server info endpoint with error handling
 app.get('/api/server-info', (req, res) => {
-  try {
-    res.json({
-      status: 'ok',
-      version: '1.0.0',
-      environment: process.env.NODE_ENV,
-      timestamp: new Date().toISOString(),
-      features: {
-        chat: true,
-        socket: true
-      }
-    });
-  } catch (error) {
-    console.error('Server info error:', error);
-    res.status(500).json({ 
-      error: true, 
-      message: 'Failed to get server info',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+  res.json({
+    status: 'ok',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    features: {
+      chat: true,
+      socket: true
+    }
+  });
 });
 
 // For local development
