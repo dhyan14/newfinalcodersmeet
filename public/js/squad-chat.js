@@ -85,19 +85,21 @@ class SquadChat {
       // Check if we're in production or development
       const isProduction = window.location.hostname !== 'localhost';
       
-      // Update the WebSocket server URL to use our Vercel proxy
+      // Point directly to the WebSocket server with full URL
       const wsServerUrl = isProduction 
-        ? '/api/proxy' // Use the Vercel proxy we created
+        ? 'https://chat-websocket-server-lk6w.onrender.com' 
         : window.location.origin;
       
       console.log('Using WebSocket server:', wsServerUrl);
       
       this.socket = io(wsServerUrl, {
         path: '/socket.io/',
-        transports: ['polling', 'websocket'], // Prioritize polling first, then try websocket
+        transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: 5,
-        timeout: 10000
+        timeout: 20000,
+        forceNew: true,
+        autoConnect: true
       });
 
       // Socket event handlers
@@ -120,10 +122,14 @@ class SquadChat {
       this.socket.on('connect_error', (error) => {
         console.error('❌ Connection error:', error);
         console.error('Transport used:', this.socket.io.engine.transport.name);
-        this.updateStatus('Connection error - falling back to localStorage', 'error');
-        // Switch to fallback mode
+        this.updateStatus('Using local storage for chat', 'info');
+        
+        // Switch to fallback mode immediately
         window.FallbackChat.setLocalStorage(true);
         window.FallbackChat.startPolling();
+        
+        // Close socket to avoid repeated reconnection attempts
+        this.socket.close();
       });
 
       this.socket.on('disconnect', () => {
