@@ -3,6 +3,7 @@ const app = express();
 const session = require('express-session');
 const adminRoutes = require('./routes/admin');
 const path = require('path');
+const MongoStore = require('connect-mongo');
 
 // Body parser middleware - MUST come BEFORE routes
 app.use(express.json());
@@ -13,7 +14,14 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/hack-a-match',
+    ttl: 24 * 60 * 60 // 1 day
+  }),
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  }
 }));
 
 // Static files middleware

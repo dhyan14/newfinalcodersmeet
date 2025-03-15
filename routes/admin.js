@@ -26,6 +26,10 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     console.log('Admin login attempt:', email);
     
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
     // Check if user exists and has admin role
     const user = await getUserByEmail(email);
     console.log('User found:', user ? user.email : 'No user');
