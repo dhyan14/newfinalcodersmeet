@@ -19,13 +19,15 @@ const server = http.createServer(app);
 const io = require('socket.io')(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app']
+      ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app', 'https://www.dhyanjain.me']
       : ['http://localhost:5000', 'http://localhost:3000'],
     methods: ["GET", "POST"],
     credentials: true
   },
   path: '/socket.io/',
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Socket.IO connection handling
@@ -596,16 +598,20 @@ app.post('/api/squad-messages', async (req, res) => {
 
 // Add server info endpoint
 app.get('/api/server-info', (req, res) => {
-  res.json({
-    status: 'ok',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString(),
-    features: {
-      chat: true,
-      socket: true
-    }
-  });
+  try {
+    res.json({
+      status: 'ok',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV,
+      timestamp: new Date().toISOString(),
+      features: {
+        chat: true,
+        socket: true
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // For local development

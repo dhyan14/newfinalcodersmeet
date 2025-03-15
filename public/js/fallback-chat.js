@@ -296,6 +296,8 @@
   window.FallbackChat = {
     useLocalStorage: false,
     pollingInterval: null,
+    squadId: null,
+    currentUser: null,
 
     init: function() {
       console.log('Initializing fallback chat...');
@@ -307,24 +309,77 @@
       console.log('Fallback Chat - Squad ID:', this.squadId);
       console.log('Fallback Chat - Current user:', this.currentUser);
       
+      // Test API availability
+      this.testApiAvailability();
       return true;
+    },
+
+    testApiAvailability: function() {
+      fetch('/api/server-info')
+        .then(response => {
+          if (!response.ok) throw new Error('API not available');
+          return response.json();
+        })
+        .then(data => {
+          console.log('API available:', data);
+          this.useLocalStorage = false;
+          this.startPolling();
+        })
+        .catch(error => {
+          console.warn('Using localStorage fallback:', error);
+          this.useLocalStorage = true;
+          this.startPolling();
+        });
+    },
+
+    setLocalStorage: function(value) {
+      this.useLocalStorage = value;
     },
 
     startPolling: function() {
       if (this.pollingInterval) return;
       console.log('Starting fallback message polling...');
       
-      // Poll for new messages every 3 seconds
       this.pollingInterval = setInterval(() => {
         this.checkForNewMessages();
       }, 3000);
     },
 
-    stopPolling: function() {
-      if (this.pollingInterval) {
-        clearInterval(this.pollingInterval);
-        this.pollingInterval = null;
+    checkForNewMessages: function() {
+      if (this.useLocalStorage) {
+        this.getLocalMessages();
+      } else {
+        this.getServerMessages();
       }
+    },
+
+    getLocalMessages: function() {
+      const messages = JSON.parse(localStorage.getItem(`chat_${this.squadId}`) || '[]');
+      this.displayMessages(messages);
+    },
+
+    getServerMessages: function() {
+      fetch(`/api/squad-messages?squadId=${this.squadId}`)
+        .then(response => response.json())
+        .then(messages => this.displayMessages(messages))
+        .catch(error => {
+          console.error('Error fetching messages:', error);
+          this.useLocalStorage = true;
+          this.getLocalMessages();
+        });
+    },
+
+    displayMessages: function(messages) {
+      const container = document.getElementById('chat-messages');
+      if (!container) return;
+
+      container.innerHTML = messages.map(msg => `
+        <div class="message ${msg.sender === this.currentUser ? 'sent' : 'received'}">
+          <div class="message-sender">${msg.sender}</div>
+          <div class="message-content">${msg.content}</div>
+          <div class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+        </div>
+      `).join('');
     },
 
     sendMessage: function() {

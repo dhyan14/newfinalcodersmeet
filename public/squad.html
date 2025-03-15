@@ -1305,42 +1305,28 @@
     <script src="/js/fallback-chat.js"></script>
 
     <script>
-      // Check if we need to use the fallback chat system
-      let usingFallback = false;
-      
       // Function to test API availability
-      function testApiAndSocketAvailability() {
-        // First try the API
-        fetch('/api/server-info')
-          .then(response => {
-            if (!response.ok) throw new Error('API not available');
-            return response.json();
-          })
-          .then(data => {
-            console.log('Server info:', data);
-            // API is available, now check if Socket.io is working
-            if (typeof io !== 'undefined' && window.socket && window.socket.connected) {
-              console.log('Socket.io is connected, using real-time chat');
-              // Socket.io is working, no need for fallback
-              usingFallback = false;
-            } else {
-              console.log('Socket.io not connected, using fallback chat');
-              // Socket.io is not working, use fallback
-              usingFallback = true;
-              if (window.FallbackChat) {
-                window.FallbackChat.startPolling();
-              }
-            }
-          })
-          .catch(error => {
-            console.warn('API test failed:', error);
-            // API is not available, use fallback
-            usingFallback = true;
-            if (window.FallbackChat) {
-              window.FallbackChat.useLocalStorage(true);
-              window.FallbackChat.startPolling();
-            }
-          });
+      async function testApiAndSocketAvailability() {
+        try {
+          const response = await fetch('/api/server-info');
+          if (!response.ok) throw new Error('API not available');
+          
+          const data = await response.json();
+          console.log('Server info:', data);
+          
+          if (typeof io !== 'undefined' && window.socket && window.socket.connected) {
+            console.log('Socket.io is connected, using real-time chat');
+            window.FallbackChat.setLocalStorage(false);
+          } else {
+            console.log('Socket.io not connected, using fallback chat');
+            window.FallbackChat.setLocalStorage(true);
+            window.FallbackChat.startPolling();
+          }
+        } catch (error) {
+          console.warn('API test failed:', error);
+          window.FallbackChat.setLocalStorage(true);
+          window.FallbackChat.startPolling();
+        }
       }
       
       // Run the test when the page loads
@@ -1348,7 +1334,7 @@
       
       // Update the send button to use the appropriate chat system
       document.getElementById('send-button')?.addEventListener('click', function() {
-        if (usingFallback && window.FallbackChat) {
+        if (window.FallbackChat) {
           window.FallbackChat.sendMessage();
         } else if (window.sendSquadMessage) {
           window.sendSquadMessage();
@@ -1360,7 +1346,7 @@
       // Also handle Enter key in the input field
       document.getElementById('message-input')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-          if (usingFallback && window.FallbackChat) {
+          if (window.FallbackChat) {
             window.FallbackChat.sendMessage();
           } else if (window.sendSquadMessage) {
             window.sendSquadMessage();
