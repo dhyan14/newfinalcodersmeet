@@ -201,27 +201,31 @@ app.use((err, req, res, next) => {
     }
 });
 
-// MongoDB Connection
-let isConnected = false;
+// Add this near the top of server.js or in a separate file
+let cachedDb = null;
 
-const connectToDatabase = async () => {
-    if (isConnected) return;
+async function connectToDatabase() {
+  if (cachedDb) {
+    return cachedDb;
+  }
 
-    try {
-        console.log('Connecting to MongoDB...');
-        await mongoose.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 10000
-        });
-        isConnected = true;
-        console.log('MongoDB Connected');
-    } catch (error) {
-        console.error('MongoDB connection error:', error);
-        isConnected = false;
-        throw error;
-    }
-};
+  const client = await mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    maxPoolSize: 10, // Limit connections for serverless
+    serverSelectionTimeoutMS: 5000
+  });
+
+  cachedDb = mongoose.connection;
+  
+  // Handle connection errors
+  cachedDb.on('error', (err) => {
+    console.error('MongoDB connection error:', err);
+    cachedDb = null;
+  });
+
+  return cachedDb;
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -235,7 +239,7 @@ app.get('/api/status', async (req, res) => {
         res.json({
             status: 'ok',
             server: true,
-            database: isConnected,
+            database: cachedDb ? true : false,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
@@ -510,7 +514,6 @@ app.use((err, req, res, next) => {
 // Update the GET endpoint to retrieve messages with "since" parameter
 app.get('/api/squad-messages', async (req, res) => {
   try {
-    console.log('GET /api/squad-messages - Query:', req.query);
     await connectToDatabase();
     
     const { squadId, since } = req.query;
@@ -546,12 +549,7 @@ app.get('/api/squad-messages', async (req, res) => {
     res.json(messages);
   } catch (error) {
     console.error('Error fetching messages:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch messages',
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 

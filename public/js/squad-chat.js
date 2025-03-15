@@ -82,13 +82,10 @@ class SquadChat {
   // Initialize Socket.IO connection
   initializeSocket() {
     try {
-      this.socket = io({
+      this.socket = io("https://your-websocket-server.com", {
         path: '/socket.io/',
-        transports: ['polling', 'websocket'],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        timeout: 20000
+        transports: ['websocket', 'polling'],
+        reconnection: true
       });
 
       // Socket event handlers
