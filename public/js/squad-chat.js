@@ -85,9 +85,9 @@ class SquadChat {
       // Check if we're in production or development
       const isProduction = window.location.hostname !== 'localhost';
       
-      // Use a CORS proxy as a temporary solution
+      // Update the WebSocket server URL to use our Vercel proxy
       const wsServerUrl = isProduction 
-        ? 'https://chat-websocket-server-lk6w.onrender.com' 
+        ? '/api/proxy' // Use the Vercel proxy we created
         : window.location.origin;
       
       console.log('Using WebSocket server:', wsServerUrl);
@@ -240,8 +240,8 @@ class SquadChat {
     });
   }
 
-  // Send message with Firebase
-  sendMessage() {
+  // Rename the Firebase version of sendMessage to avoid conflicts
+  sendMessageWithFirebase() {
     if (!this.messageInput || !this.db) return;
     
     const message = this.messageInput.value.trim();
