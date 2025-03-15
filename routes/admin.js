@@ -45,8 +45,15 @@ router.post('/login', async (req, res) => {
 });
 
 // Check if user is authenticated as admin
-router.get('/check-auth', isAdmin, (req, res) => {
-  res.status(200).json({ isAdmin: true });
+router.get('/check-auth', isAdmin, async (req, res) => {
+  try {
+    // Get admin user data to return
+    const admin = await User.findById(req.session.userId, '-password');
+    res.status(200).json({ isAdmin: true, admin });
+  } catch (error) {
+    console.error('Error fetching admin data:', error);
+    res.status(200).json({ isAdmin: true }); // Still return isAdmin true even if user fetch fails
+  }
 });
 
 // Admin logout
@@ -70,6 +77,31 @@ router.get('/users', isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Server error while fetching users' });
+  }
+});
+
+// Add dashboard stats endpoint
+router.get('/dashboard-stats', isAdmin, async (req, res) => {
+  try {
+    // Get counts from database
+    const totalUsers = await User.countDocuments();
+    
+    // Get users created today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const newUsers = await User.countDocuments({ createdAt: { $gte: today } });
+    
+    // You can add more stats here based on your data model
+    
+    res.status(200).json({
+      totalUsers,
+      newUsers,
+      connections: 0, // Replace with actual count when available
+      projects: 0     // Replace with actual count when available
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Server error while fetching dashboard stats' });
   }
 });
 
