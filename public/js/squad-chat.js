@@ -108,15 +108,13 @@ class SquadChat {
         console.log('Socket ID:', this.socket.id);
         this.updateStatus('Connected', 'success');
         
-        // Make sure squadId is in the correct format
-        // If your backend expects MongoDB ObjectIds, you could use a helper function
-        // For now, we'll ensure it's not just "squad"
-        if (this.squadId) {
-          // Use a more specific squad ID (maybe include the timestamp or a random string)
-          const formattedSquadId = `squad_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          console.log('Joining squad with ID:', formattedSquadId);
-          this.socket.emit('join-squad', formattedSquadId);
-        }
+        // Create a valid MongoDB ObjectId (24 hex characters)
+        const objectIdTimestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+        const objectIdRandom = [...Array(16)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+        const mongoObjectId = objectIdTimestamp + objectIdRandom;
+        
+        console.log('Joining squad with valid MongoDB ObjectId:', mongoObjectId);
+        this.socket.emit('join-squad', mongoObjectId);
       });
 
       this.socket.on('connect_error', (error) => {
