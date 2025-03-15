@@ -45,53 +45,37 @@
         },
         
         // API request helper
-        request: async function(endpoint, options = {}) {
-            const url = `${this.baseURL}${endpoint}`;
-            console.log(`API request to: ${url}`);
-            
+        request: async function(endpoint, method = 'GET', data = null) {
             try {
-                // Add timeout to prevent hanging requests
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-                
-                const response = await fetch(url, {
-                    ...options,
+                const url = `${this.baseURL}${endpoint}`;
+                const options = {
+                    method,
                     headers: {
-                        'Content-Type': 'application/json',
-                        ...options.headers
-                    },
-                    signal: controller.signal
-                });
+                        'Content-Type': 'application/json'
+                    }
+                };
                 
-                clearTimeout(timeoutId);
-                
-                let data;
-                try {
-                    data = await response.json();
-                } catch (e) {
-                    console.error('Error parsing response:', e);
-                    throw new Error('Invalid server response');
+                if (data) {
+                    options.body = JSON.stringify(data);
                 }
+                
+                const response = await fetch(url, options);
+                const responseData = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error || data.message || `Request failed: ${response.status}`);
+                    throw new Error(responseData.message || 'Request failed');
                 }
                 
-                return data;
+                return responseData;
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    console.error(`Request timeout for ${endpoint}`);
-                    throw new Error('Request timed out. Server may be unavailable.');
-                }
-                
-                if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-                    console.error(`Network error for ${endpoint}`);
-                    throw new Error('Network error. Please check your connection.');
-                }
-                
                 console.error(`API error (${endpoint}):`, error);
-                throw error;
+                throw new Error(error.message || 'Request failed');
             }
+        },
+        
+        // Login method
+        login: async function(email, password) {
+            return this.request('/login', 'POST', { email, password });
         },
         
         // Show connection error message

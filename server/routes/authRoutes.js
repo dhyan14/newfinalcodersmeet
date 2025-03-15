@@ -1,3 +1,9 @@
+const express = require('express');
+const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+
 // Login route
 router.post('/login', async (req, res) => {
   try {
@@ -60,4 +66,48 @@ router.post('/login', async (req, res) => {
       message: 'Server error during login' 
     });
   }
-}); 
+});
+
+// Simplified login route for debugging
+router.post('/login-simple', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Log the request for debugging
+    console.log('Login attempt:', { email, passwordProvided: !!password });
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'Email and password are required' 
+      });
+    }
+    
+    // Just return success for testing
+    res.status(200).json({
+      status: 'success',
+      message: 'Login route is working',
+      email: email
+    });
+  } catch (error) {
+    console.error('Simplified login error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Server error during login',
+      errorDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Debug endpoint
+router.get('/auth-test', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Auth routes are working',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Don't forget to export the router
+module.exports = router; 

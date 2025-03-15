@@ -9,11 +9,15 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        lowercase: true
     },
     password: {
         type: String,
         required: true
+    },
+    profileImage: {
+        type: String
     },
     location: {
         type: {
@@ -39,7 +43,7 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Add geospatial index for location-based queries
+// Add 2dsphere index for geospatial queries
 userSchema.index({ location: '2dsphere' });
 
 // Method to compare passwords

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Login Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .container { max-width: 500px; margin: 0 auto; }
+    button { padding: 10px; margin: 5px; }
+    pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Direct API Tests</h1>
+    
+    <div>
+      <button onclick="testHealth()">Test Health Endpoint</button>
+      <button onclick="testAuthTest()">Test Auth Test</button>
+      <button onclick="testLoginSimple()">Test Simple Login</button>
+      <button onclick="testLoginFull()">Test Full Login</button>
+    </div>
+    
+    <h3>Results:</h3>
+    <pre id="results">Click a button to test an endpoint</pre>
+  </div>
+
+  <script>
+    const resultsEl = document.getElementById('results');
+    const API_URL = 'https://newfinalcodersmeet.vercel.app/api';
+    
+    async function fetchAPI(endpoint, method = 'GET', data = null) {
+      resultsEl.textContent = `Fetching ${method} ${endpoint}...`;
+      
+      try {
+        const options = {
+          method,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        };
+        
+        if (data) {
+          options.body = JSON.stringify(data);
+        }
+        
+        const response = await fetch(`${API_URL}${endpoint}`, options);
+        const responseData = await response.json();
+        
+        resultsEl.textContent = JSON.stringify({
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData
+        }, null, 2);
+        
+        return responseData;
+      } catch (error) {
+        resultsEl.textContent = `Error: ${error.message}`;
+        console.error('API error:', error);
+      }
+    }
+    
+    function testHealth() {
+      fetchAPI('/health');
+    }
+    
+    function testAuthTest() {
+      fetchAPI('/auth-test');
+    }
+    
+    function testLoginSimple() {
+      fetchAPI('/login-simple', 'POST', {
+        email: 'test@example.com',
+        password: 'password123'
+      });
+    }
+    
+    function testLoginFull() {
+      fetchAPI('/login', 'POST', {
+        email: 'test@example.com',
+        password: 'password123'
+      });
+    }
+  </script>
+</body>
+</html> 
