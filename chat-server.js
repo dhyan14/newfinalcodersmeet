@@ -4,14 +4,34 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
+
+// More specific CORS configuration
+app.use(cors({
+  origin: [
+    'https://newfinalcodersmeet.vercel.app',
+    'https://www.dhyanjain.me',
+    'http://localhost:3000'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true
+}));
 
 const server = http.createServer(app);
+
+// Configure Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+    origin: [
+      'https://newfinalcodersmeet.vercel.app',
+      'https://www.dhyanjain.me',
+      'http://localhost:3000'
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 30000,
+  pingInterval: 25000
 });
 
 io.on('connection', (socket) => {
@@ -29,6 +49,15 @@ io.on('connection', (socket) => {
 
 app.get('/api/server-info', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// Add a health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
 });
 
 const PORT = process.env.PORT || 3001;

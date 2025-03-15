@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
 const http = require('http');
+const { Server } = require('socket.io');
 
 // Import models
 const User = require('./models/User');
@@ -26,11 +27,19 @@ app.use(function(req, res, next) {
   next();
 });
 
-// Configure Socket.IO with permissive settings
-const io = require('socket.io')(server, {
+// Add this to your chat-server.js
+const isProduction = process.env.NODE_ENV === 'production';
+console.log(`Running in ${isProduction ? 'production' : 'development'} mode`);
+
+// Configure Socket.IO differently based on environment
+const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    // In production, be more restrictive about origins
+    origin: isProduction 
+      ? ['https://www.dhyanjain.me', 'https://newfinalcodersmeet.vercel.app'] 
+      : '*',
+    methods: ["GET", "POST"],
+    credentials: true
   },
   transports: ['polling'], // Prioritize polling for Vercel
   pingTimeout: 10000,

@@ -82,28 +82,30 @@ class SquadChat {
   // Initialize Socket.IO connection
   initializeSocket() {
     try {
-      // Check if we're on Vercel and skip Socket.IO entirely
-      if (window.location.hostname.includes('vercel.app') || 
-          window.location.hostname === 'www.dhyanjain.me') {
-        console.log('Detected Vercel deployment - using localStorage chat system');
-        this.updateStatus('Using offline mode (localStorage)', 'warning');
-        window.FallbackChat.setLocalStorage(true);
-        window.FallbackChat.startPolling();
-        return;
-      }
+      // Check if we're in production or development
+      const isProduction = window.location.hostname !== 'localhost';
       
-      // Only try Socket.IO on non-Vercel environments
-      this.socket = io(window.location.origin, {
+      // Use the Render.com WebSocket server in production
+      const wsServerUrl = isProduction 
+        ? 'https://chat-websocket-server-lk6w.onrender.com' // Your actual Render URL
+        : window.location.origin;
+      
+      console.log('Using WebSocket server:', wsServerUrl);
+      
+      this.socket = io(wsServerUrl, {
         path: '/socket.io/',
-        transports: ['polling'],
+        transports: ['websocket', 'polling'], // Try both transport methods
         reconnection: true,
-        reconnectionAttempts: 2,  // Reduce to prevent console spam
-        timeout: 5000
+        reconnectionAttempts: 5,
+        timeout: 10000
       });
 
       // Socket event handlers
+      console.log('Attempting to connect to:', wsServerUrl);
+
       this.socket.on('connect', () => {
-        console.log('Connected to chat server');
+        console.log('✅ Successfully connected to WebSocket server');
+        console.log('Socket ID:', this.socket.id);
         this.updateStatus('Connected', 'success');
         if (this.squadId) {
           this.socket.emit('join-squad', this.squadId);
@@ -111,8 +113,9 @@ class SquadChat {
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-        this.updateStatus('Connection error - falling back to polling', 'error');
+        console.error('❌ Connection error:', error);
+        console.error('Transport used:', this.socket.io.engine.transport.name);
+        this.updateStatus('Connection error - falling back to localStorage', 'error');
         // Switch to fallback mode
         window.FallbackChat.setLocalStorage(true);
         window.FallbackChat.startPolling();
