@@ -300,45 +300,37 @@
     currentUser: null,
 
     init: function() {
-      console.log('Initializing fallback chat...');
-      this.squadId = document.getElementById('squad-id')?.value || 'squad.html';
-      this.currentUser = localStorage.getItem('user') 
-        ? JSON.parse(localStorage.getItem('user')).username 
-        : 'TESTUSER';
-      
-      console.log('Fallback Chat - Squad ID:', this.squadId);
-      console.log('Fallback Chat - Current user:', this.currentUser);
-      
-      // Test API availability
-      this.testApiAvailability();
-      return true;
-    },
-
-    testApiAvailability: function() {
-      fetch('/api/server-info')
-        .then(response => {
-          if (!response.ok) throw new Error('API not available');
-          return response.json();
-        })
-        .then(data => {
-          console.log('API available:', data);
-          this.useLocalStorage = false;
-          this.startPolling();
-        })
-        .catch(error => {
-          console.warn('Using localStorage fallback:', error);
-          this.useLocalStorage = true;
-          this.startPolling();
-        });
+      try {
+        console.log('Initializing fallback chat...');
+        this.squadId = document.getElementById('squad-id')?.value || 
+                      window.location.pathname.split('/').pop().replace('.html', '');
+        
+        const userData = localStorage.getItem('user');
+        this.currentUser = userData ? JSON.parse(userData).username : 'Anonymous';
+        
+        console.log('Fallback Chat - Squad ID:', this.squadId);
+        console.log('Fallback Chat - Current user:', this.currentUser);
+        
+        this.setupEventListeners();
+        return true;
+      } catch (error) {
+        console.error('Fallback chat initialization error:', error);
+        return false;
+      }
     },
 
     setLocalStorage: function(value) {
-      this.useLocalStorage = value;
+      this.useLocalStorage = Boolean(value);
+      console.log('Fallback storage mode:', this.useLocalStorage ? 'local' : 'server');
     },
 
     startPolling: function() {
-      if (this.pollingInterval) return;
+      if (this.pollingInterval) {
+        clearInterval(this.pollingInterval);
+      }
+      
       console.log('Starting fallback message polling...');
+      this.checkForNewMessages(); // Check immediately
       
       this.pollingInterval = setInterval(() => {
         this.checkForNewMessages();

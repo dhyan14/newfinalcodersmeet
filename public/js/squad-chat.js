@@ -81,37 +81,56 @@ class SquadChat {
 
   // Initialize Socket.IO connection
   initializeSocket() {
-    this.socket = io({
-      path: '/socket.io/',
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
+    try {
+      this.socket = io({
+        path: '/socket.io/',
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 20000
+      });
 
-    // Socket event handlers
-    this.socket.on('connect', () => {
-      console.log('Connected to chat server');
-      this.updateStatus('Connected', 'success');
-      this.socket.emit('join-squad', this.squadId);
-    });
+      // Socket event handlers
+      this.socket.on('connect', () => {
+        console.log('Connected to chat server');
+        this.updateStatus('Connected', 'success');
+        if (this.squadId) {
+          this.socket.emit('join-squad', this.squadId);
+        }
+      });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
-      this.updateStatus('Connection error', 'error');
-    });
+      this.socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        this.updateStatus('Connection error - falling back to polling', 'error');
+        // Switch to fallback mode
+        window.FallbackChat.setLocalStorage(true);
+        window.FallbackChat.startPolling();
+      });
 
-    this.socket.on('chat-history', (messages) => {
-      this.displayMessages(messages);
-    });
+      this.socket.on('disconnect', () => {
+        console.log('Disconnected from chat server');
+        this.updateStatus('Disconnected - trying to reconnect...', 'error');
+      });
 
-    this.socket.on('new-message', (message) => {
-      this.displayMessage(message);
-    });
+      this.socket.on('chat-history', (messages) => {
+        this.displayMessages(messages);
+      });
 
-    this.socket.on('chat-error', (error) => {
-      this.showError(error.message);
-    });
+      this.socket.on('new-message', (message) => {
+        this.displayMessage(message);
+      });
+
+      this.socket.on('chat-error', (error) => {
+        this.showError(error.message);
+      });
+    } catch (error) {
+      console.error('Socket initialization error:', error);
+      this.updateStatus('Chat initialization failed', 'error');
+      // Switch to fallback mode
+      window.FallbackChat.setLocalStorage(true);
+      window.FallbackChat.startPolling();
+    }
   }
 
   // Set up UI event listeners

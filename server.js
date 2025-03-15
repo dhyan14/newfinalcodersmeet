@@ -18,23 +18,26 @@ const server = http.createServer(app);
 // Initialize Socket.IO with proper configuration
 const io = require('socket.io')(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app', 'https://www.dhyanjain.me']
-      : ['http://localhost:5000', 'http://localhost:3000'],
+    origin: '*', // Allow all origins in development
     methods: ["GET", "POST"],
     credentials: true
   },
   path: '/socket.io/',
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'], // Try polling first
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  allowEIO3: true // Enable compatibility mode
 });
 
-// Socket.IO connection handling
+// Add Socket.IO connection handling with better error handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  // Handle joining squad room
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
+
+  // Handle joining squad room with error handling
   socket.on('join-squad', async (squadId) => {
     try {
       if (!squadId) {
@@ -42,7 +45,7 @@ io.on('connection', (socket) => {
       }
 
       const roomName = `squad_${squadId}`;
-      socket.join(roomName);
+      await socket.join(roomName);
       console.log(`Socket ${socket.id} joined room: ${roomName}`);
 
       // Load previous messages
@@ -596,7 +599,7 @@ app.post('/api/squad-messages', async (req, res) => {
   }
 });
 
-// Add server info endpoint
+// Add server info endpoint with error handling
 app.get('/api/server-info', (req, res) => {
   try {
     res.json({
@@ -610,7 +613,12 @@ app.get('/api/server-info', (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Server info error:', error);
+    res.status(500).json({ 
+      error: true, 
+      message: 'Failed to get server info',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
