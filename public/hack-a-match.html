@@ -993,7 +993,65 @@
             window.location.href = 'squad.html';
         });
 
-        // Add this helper function to show location instructions
+        // Add this helper function to handle location errors
+        function handleLocationError(error) {
+            const locationStatus = document.getElementById('locationStatus');
+            const membersList = document.getElementById('communityMembersList');
+            
+            console.error('Location error:', error.message);
+            
+            let errorMessage = '';
+            let actionButton = '';
+            
+            switch(error.message) {
+                case 'Location permission denied':
+                    errorMessage = `
+                        <p>Please enable location access in your browser settings to find nearby coders.</p>
+                        <p style="font-size: 0.8em; margin-top: 10px;">
+                            How to enable: Click the lock/info icon in your browser's address bar and allow location access.
+                        </p>
+                    `;
+                    actionButton = `
+                        <button onclick="showLocationInstructions()" class="enable-location-btn">
+                            <i class="fas fa-info-circle"></i> Show Instructions
+                        </button>
+                    `;
+                    break;
+                case 'Location information unavailable':
+                    errorMessage = 'Unable to detect your location. Please check your device settings.';
+                    break;
+                case 'Location request timed out':
+                    errorMessage = 'Location request took too long. Please try again.';
+                    break;
+                case 'Geolocation is not supported by your browser':
+                    errorMessage = 'Your browser doesn\'t support location services. Please try a different browser.';
+                    break;
+                default:
+                    errorMessage = 'An error occurred while finding nearby coders.';
+            }
+            
+            locationStatus.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${errorMessage}
+                </div>
+                ${actionButton || `
+                    <button onclick="loadNearbyUsers()" class="enable-location-btn">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                `}
+            `;
+            
+            membersList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Unable to load nearby coders</p>
+                    <p>Please check your location settings and try again</p>
+                </div>
+            `;
+        }
+
+        // Helper function to show location instructions
         function showLocationInstructions() {
             const browser = detectBrowser();
             let instructions = '';
