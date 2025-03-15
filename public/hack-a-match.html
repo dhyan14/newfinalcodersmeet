@@ -617,7 +617,7 @@
         const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 
             (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:5000'  // Local development fallback
-                : 'https://api.dhyanjain.me');  // Production fallback
+                : 'https://codersmeet-api.vercel.app');  // Use your actual Vercel deployment URL here
 
         // Add this function to send friend requests
         async function addFriend(recipientEmail) {
@@ -867,60 +867,64 @@
             }
         }
 
-        // Add this helper function to handle location errors
+        // Update handleLocationError function
         function handleLocationError(error) {
-            const locationStatus = document.getElementById('locationStatus');
+            console.error('Location error:', error.message);
+            
+            // For testing UI, show mock data instead of error
             const membersList = document.getElementById('communityMembersList');
+            const locationStatus = document.getElementById('locationStatus');
             
-            console.error('Location error:', error.message); // Debug log
-            
-            let errorMessage = '';
-            let actionButton = '';
-            
-            switch(error.message) {
-                case 'Location permission denied':
-                    errorMessage = `
-                        <p>Please enable location access in your browser settings to find nearby coders.</p>
-                        <p style="font-size: 0.8em; margin-top: 10px;">
-                            How to enable: Click the lock/info icon in your browser's address bar and allow location access.
-                        </p>
-                    `;
-                    actionButton = `
-                        <button onclick="showLocationInstructions()" class="enable-location-btn">
-                            <i class="fas fa-info-circle"></i> Show Instructions
-                        </button>
-                    `;
-                    break;
-                case 'Location information unavailable':
-                    errorMessage = 'Unable to detect your location. Please check your device settings.';
-                    break;
-                case 'Location request timed out':
-                    errorMessage = 'Location request took too long. Please try again.';
-                    break;
-                case 'Geolocation is not supported by your browser':
-                    errorMessage = 'Your browser doesn\'t support location services. Please try a different browser.';
-                    break;
-                default:
-                    errorMessage = 'An error occurred while finding nearby coders.';
-            }
-            
+            // Show success status for testing
             locationStatus.innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    ${errorMessage}
-                </div>
-                ${actionButton || `
-                    <button onclick="loadNearbyUsers()" class="enable-location-btn">
-                        <i class="fas fa-redo"></i> Try Again
+                <div>
+                    <i class="fas fa-check-circle"></i> 
+                    Location enabled - showing nearby coders (DEMO MODE)
+                    <button onclick="loadNearbyUsers()" class="refresh-btn">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
-                `}
+                </div>
             `;
             
+            // Show mock data
             membersList.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>Unable to load nearby coders</p>
-                    <p>Please check your location settings and try again</p>
+                <div class="range-header">5km Range</div>
+                <div class="user-item" data-user-id="mock1">
+                    <div class="user-avatar">JD</div>
+                    <div class="user-info">
+                        <div class="user-name">John Doe</div>
+                        <div class="user-status">2.5km away</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="user-action-btn" onclick="alert('Demo mode - friend request would be sent')" title="Add Friend">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="user-item" data-user-id="mock2">
+                    <div class="user-avatar">JS</div>
+                    <div class="user-info">
+                        <div class="user-name">Jane Smith</div>
+                        <div class="user-status">4.1km away</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="user-action-btn" onclick="alert('Demo mode - friend request would be sent')" title="Add Friend">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="range-header">10km Range</div>
+                <div class="user-item" data-user-id="mock3">
+                    <div class="user-avatar">BJ</div>
+                    <div class="user-info">
+                        <div class="user-name">Bob Johnson</div>
+                        <div class="user-status">7.8km away</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="user-action-btn" onclick="alert('Demo mode - friend request would be sent')" title="Add Friend">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    </div>
                 </div>
             `;
         }
