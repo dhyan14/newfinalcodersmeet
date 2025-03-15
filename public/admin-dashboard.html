@@ -113,59 +113,38 @@
         const passwordInput = document.getElementById('password');
         const loginFormContainer = document.getElementById('loginForm');
         const dashboardContainer = document.getElementById('dashboard');
-        const logoutBtn = document.getElementById('logoutBtn');
         const welcomeMessage = document.getElementById('welcomeMessage');
+        const logoutBtn = document.getElementById('logoutBtn');
         
-        // Check if already logged in
+        // Check if already logged in using the simplified endpoint
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, checking authentication...');
-            checkAuthStatus();
-        });
-        
-        function checkAuthStatus() {
-            fetch('/api/admin/check-auth', {
+            console.log('Checking authentication status...');
+            
+            fetch('/api/admin-ping', {
                 method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json'
-                }
+                credentials: 'include'
             })
-            .then(response => {
-                console.log('Auth check status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error('Not authenticated');
-                }
-                
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Auth check response data:', data);
+                console.log('Auth check response:', data);
                 
-                if (data && data.isAdmin) {
-                    console.log('User is authenticated as admin');
-                    // Show admin name if available
-                    if (data.admin && data.admin.fullName) {
-                        welcomeMessage.textContent = `Welcome, ${data.admin.fullName}!`;
-                    }
-                    
+                if (data.isAdmin) {
                     // Show dashboard
                     loginFormContainer.classList.add('d-none');
                     dashboardContainer.classList.remove('d-none');
                 } else {
-                    console.log('Not authenticated as admin');
                     // Show login form
                     loginFormContainer.classList.remove('d-none');
                     dashboardContainer.classList.add('d-none');
                 }
             })
             .catch(error => {
-                console.error('Authentication check error:', error);
-                // Show login form
+                console.error('Auth check error:', error);
+                // Default to login form on error
                 loginFormContainer.classList.remove('d-none');
                 dashboardContainer.classList.add('d-none');
             });
-        }
+        });
         
         // Handle login
         loginForm.addEventListener('submit', function(e) {
@@ -175,31 +154,28 @@
             const password = passwordInput.value;
             
             console.log('Attempting login with:', email);
+            loginError.style.display = 'none';
             
             fetch('/api/admin/login', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ email, password }),
                 credentials: 'include'
             })
             .then(response => {
-                console.log('Login response status:', response.status);
-                
                 if (!response.ok) {
                     return response.json().then(data => {
                         throw new Error(data.error || 'Login failed');
                     });
                 }
-                
                 return response.json();
             })
             .then(data => {
                 console.log('Login successful:', data);
                 
-                // Set welcome message if admin data is available
+                // Set welcome message
                 if (data.admin && data.admin.fullName) {
                     welcomeMessage.textContent = `Welcome, ${data.admin.fullName}!`;
                 }
@@ -221,20 +197,17 @@
                 method: 'POST',
                 credentials: 'include'
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Logout failed');
-                }
+            .then(() => {
                 // Show login form
                 loginFormContainer.classList.remove('d-none');
                 dashboardContainer.classList.add('d-none');
-                // Clear login form
+                // Reset form
                 loginForm.reset();
                 loginError.style.display = 'none';
             })
             .catch(error => {
                 console.error('Logout error:', error);
-                alert('Logout failed: ' + error.message);
+                alert('Logout failed');
             });
         });
     </script>

@@ -4,6 +4,7 @@ const session = require('express-session');
 const adminRoutes = require('./routes/admin');
 const path = require('path');
 const MongoStore = require('connect-mongo');
+const adminPingRoutes = require('./routes/admin-ping');
 
 // Body parser middleware - MUST come BEFORE routes
 app.use(express.json());
@@ -34,6 +35,7 @@ app.get('/admin-dashboard.html', (req, res) => {
 
 // API routes
 app.use('/api/admin', adminRoutes);
+app.use('/api', adminPingRoutes);
 
 // Other routes...
 
