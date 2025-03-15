@@ -9,7 +9,6 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // CORS configuration for Vercel
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
