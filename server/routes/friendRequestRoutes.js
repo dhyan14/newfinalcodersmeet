@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // Fix the path - was userModel
+const User = require('../models/userModel'); // Adjust path as needed
 const mongoose = require('mongoose');
-const FriendRequest = require('../models/FriendRequest');
 
 // Create a schema for friend requests
 const friendRequestSchema = new mongoose.Schema({
@@ -27,73 +26,49 @@ const friendRequestSchema = new mongoose.Schema({
   }
 });
 
-const FriendRequestModel = mongoose.model('FriendRequest', friendRequestSchema);
+const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
 
 // Send a friend request
 router.post('/send-friend-request', async (req, res) => {
   try {
-    const { senderEmail, recipientEmail } = req.body;
+    const { senderEmail, receiverEmail } = req.body;
     
-    if (!senderEmail || !recipientEmail) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Sender and recipient emails are required' 
-      });
+    if (!senderEmail || !receiverEmail) {
+      return res.status(400).json({ message: 'Sender and receiver emails are required' });
     }
     
-    if (senderEmail === recipientEmail) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Cannot send friend request to yourself' 
-      });
-    }
-    
-    // Find sender and recipient
+    // Find users by email
     const sender = await User.findOne({ email: senderEmail });
-    const recipient = await User.findOne({ email: recipientEmail });
+    const receiver = await User.findOne({ email: receiverEmail });
     
-    if (!sender || !recipient) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'One or both users not found' 
-      });
+    if (!sender || !receiver) {
+      return res.status(404).json({ message: 'One or both users not found' });
     }
     
     // Check if request already exists
     const existingRequest = await FriendRequest.findOne({
       sender: sender._id,
-      recipient: recipient._id,
-      status: { $in: ['pending', 'accepted'] }
+      receiver: receiver._id,
+      status: 'pending'
     });
     
     if (existingRequest) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Friend request already sent or users are already friends' 
-      });
+      return res.status(400).json({ message: 'Friend request already sent' });
     }
     
     // Create new friend request
     const friendRequest = new FriendRequest({
       sender: sender._id,
-      recipient: recipient._id,
-      status: 'pending',
-      createdAt: new Date()
+      receiver: receiver._id
     });
     
     await friendRequest.save();
     
-    res.status(201).json({ 
-      success: true, 
-      message: 'Friend request sent successfully' 
-    });
+    res.status(201).json({ message: 'Friend request sent successfully' });
     
   } catch (error) {
     console.error('Error sending friend request:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Server error while sending friend request' 
-    });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -103,52 +78,32 @@ router.get('/friend-requests', async (req, res) => {
     const { email } = req.query;
     
     if (!email) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Email is required' 
-      });
+      return res.status(400).json({ message: 'Email is required' });
     }
     
-    // Find user
+    // Find user by email
     const user = await User.findOne({ email });
-    
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'User not found' 
-      });
+      return res.status(404).json({ message: 'User not found' });
     }
     
-    // Find pending friend requests
+    // Find pending friend requests for this user
     const requests = await FriendRequest.find({
-      recipient: user._id,
+      receiver: user._id,
       status: 'pending'
     }).populate('sender', 'fullName email');
     
-    // Format the requests with time ago
+    // Format the response
     const formattedRequests = requests.map(request => {
-      const createdAt = new Date(request.createdAt);
-      const now = new Date();
-      const diffMs = now - createdAt;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMins / 60);
-      const diffDays = Math.floor(diffHours / 24);
-      
-      let timeAgo;
-      if (diffDays > 0) {
-        timeAgo = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-      } else if (diffHours > 0) {
-        timeAgo = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-      } else if (diffMins > 0) {
-        timeAgo = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-      } else {
-        timeAgo = 'Just now';
-      }
+      const timeAgo = getTimeAgo(request.createdAt);
       
       return {
         _id: request._id,
-        sender: request.sender,
-        status: request.status,
+        sender: {
+          _id: request.sender._id,
+          fullName: request.sender.fullName,
+          email: request.sender.email
+        },
         createdAt: request.createdAt,
         timeAgo
       };
@@ -158,87 +113,81 @@ router.get('/friend-requests', async (req, res) => {
     
   } catch (error) {
     console.error('Error getting friend requests:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Server error while getting friend requests' 
-    });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Respond to a friend request (accept/reject)
+// Respond to a friend request
 router.post('/friend-request-response', async (req, res) => {
   try {
     const { requestId, action } = req.body;
     
     if (!requestId || !action) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Request ID and action are required' 
-      });
+      return res.status(400).json({ message: 'Request ID and action are required' });
     }
     
     if (action !== 'accept' && action !== 'reject') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Action must be either "accept" or "reject"' 
-      });
+      return res.status(400).json({ message: 'Action must be either accept or reject' });
     }
     
     // Find the request
     const request = await FriendRequest.findById(requestId);
-    
     if (!request) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Friend request not found' 
-      });
+      return res.status(404).json({ message: 'Friend request not found' });
     }
     
-    if (request.status !== 'pending') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'This request has already been processed' 
-      });
-    }
+    // Update request status
+    request.status = action === 'accept' ? 'accepted' : 'rejected';
+    await request.save();
     
+    // If accepted, update friends list for both users
     if (action === 'accept') {
-      // Update request status
-      request.status = 'accepted';
-      await request.save();
-      
-      // Add each user to the other's friends list
-      await User.findByIdAndUpdate(
-        request.sender,
-        { $addToSet: { friends: request.recipient } }
-      );
-      
-      await User.findByIdAndUpdate(
-        request.recipient,
-        { $addToSet: { friends: request.sender } }
-      );
-      
-      res.status(200).json({ 
-        success: true, 
-        message: 'Friend request accepted' 
+      // Implementation depends on how you store friends in your user model
+      // This is a simple example assuming you have a friends array in your user model
+      await User.findByIdAndUpdate(request.sender, {
+        $addToSet: { friends: request.receiver }
       });
-    } else {
-      // Update request status to rejected
-      request.status = 'rejected';
-      await request.save();
       
-      res.status(200).json({ 
-        success: true, 
-        message: 'Friend request rejected' 
+      await User.findByIdAndUpdate(request.receiver, {
+        $addToSet: { friends: request.sender }
       });
     }
+    
+    res.status(200).json({ 
+      message: `Friend request ${action === 'accept' ? 'accepted' : 'rejected'} successfully` 
+    });
     
   } catch (error) {
     console.error('Error responding to friend request:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Server error while responding to friend request' 
-    });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+// Helper function to format time ago
+function getTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  
+  let interval = Math.floor(seconds / 31536000);
+  if (interval > 1) return interval + ' years ago';
+  if (interval === 1) return '1 year ago';
+  
+  interval = Math.floor(seconds / 2592000);
+  if (interval > 1) return interval + ' months ago';
+  if (interval === 1) return '1 month ago';
+  
+  interval = Math.floor(seconds / 86400);
+  if (interval > 1) return interval + ' days ago';
+  if (interval === 1) return '1 day ago';
+  
+  interval = Math.floor(seconds / 3600);
+  if (interval > 1) return interval + ' hours ago';
+  if (interval === 1) return '1 hour ago';
+  
+  interval = Math.floor(seconds / 60);
+  if (interval > 1) return interval + ' minutes ago';
+  if (interval === 1) return '1 minute ago';
+  
+  return 'just now';
+}
 
 module.exports = router; 

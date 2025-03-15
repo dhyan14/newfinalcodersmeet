@@ -3,20 +3,12 @@ const router = express.Router();
 
 // Health check endpoint
 router.get('/health', (req, res) => {
-    res.status(200).json({ 
-        status: 'ok',
-        message: 'API is running',
-        timestamp: new Date().toISOString()
-    });
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
-// Root health endpoint
+// Add this additional endpoint to match what the client is looking for
 router.get('/', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok',
-    message: 'API is running',
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).json({ status: 'OK', message: 'API is running' });
 });
 
 // Add a test endpoint
