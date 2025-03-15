@@ -966,7 +966,93 @@
             window.location.href = 'squad.html';
         });
 
-        // Add this helper function to show location instructions
+        // Add the missing handleLocationError function
+        function handleLocationError(error) {
+            const locationStatus = document.getElementById('locationStatus');
+            const membersList = document.getElementById('communityMembersList');
+            
+            console.error('Location error:', error.message); // Debug log
+            
+            let errorMessage = '';
+            let actionButton = '';
+            
+            // Determine the appropriate error message based on the error
+            if (error.code) {
+                // This is a GeolocationPositionError object
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = `
+                            <p>Please enable location access in your browser settings to find nearby coders.</p>
+                            <p style="font-size: 0.8em; margin-top: 10px;">
+                                How to enable: Click the lock/info icon in your browser's address bar and allow location access.
+                            </p>
+                        `;
+                        actionButton = `
+                            <button onclick="showLocationInstructions()" class="enable-location-btn">
+                                <i class="fas fa-info-circle"></i> Show Instructions
+                            </button>
+                        `;
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = 'Unable to detect your location. Please check your device settings.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = 'Location request took too long. Please try again.';
+                        break;
+                    default:
+                        errorMessage = 'An unknown error occurred while trying to access your location.';
+                }
+            } else {
+                // This is a regular Error object or string
+                switch(error.message) {
+                    case 'Geolocation is not supported by your browser':
+                        errorMessage = 'Your browser doesn\'t support location services. Please try a different browser.';
+                        break;
+                    case 'User not logged in':
+                        errorMessage = 'You must be logged in to use this feature.';
+                        break;
+                    case 'Location permission denied':
+                        errorMessage = `
+                            <p>Please enable location access in your browser settings to find nearby coders.</p>
+                            <p style="font-size: 0.8em; margin-top: 10px;">
+                                How to enable: Click the lock/info icon in your browser's address bar and allow location access.
+                            </p>
+                        `;
+                        actionButton = `
+                            <button onclick="showLocationInstructions()" class="enable-location-btn">
+                                <i class="fas fa-info-circle"></i> Show Instructions
+                            </button>
+                        `;
+                        break;
+                    default:
+                        errorMessage = error.message || 'An error occurred while finding nearby coders.';
+                }
+            }
+            
+            // Update the UI with the error message
+            locationStatus.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${errorMessage}
+                </div>
+                ${actionButton || `
+                    <button onclick="loadNearbyUsers()" class="enable-location-btn">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                `}
+            `;
+            
+            // Update the members list to show an error state
+            membersList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Unable to load nearby coders</p>
+                    <p>Please check your location settings and try again</p>
+                </div>
+            `;
+        }
+
+        // Helper function to show location instructions based on browser
         function showLocationInstructions() {
             const browser = detectBrowser();
             let instructions = '';
@@ -987,7 +1073,17 @@
                         <ol>
                             <li>Click the lock/info icon in the address bar</li>
                             <li>Click on "Clear settings"</li>
-                            <li>Refresh the page and allow location access</li>
+                            <li>Refresh the page and allow location access when prompted</li>
+                        </ol>
+                    `;
+                    break;
+                case 'Safari':
+                    instructions = `
+                        <ol>
+                            <li>Open Safari Preferences</li>
+                            <li>Go to Privacy tab</li>
+                            <li>Ensure "Website use of location services" is enabled</li>
+                            <li>Refresh the page and allow access when prompted</li>
                         </ol>
                     `;
                     break;
@@ -1004,7 +1100,7 @@
             const locationStatus = document.getElementById('locationStatus');
             locationStatus.innerHTML = `
                 <div class="error-message">
-                    <h4>How to Enable Location Access</h4>
+                    <h4>How to Enable Location Access in ${browser}</h4>
                     ${instructions}
                 </div>
                 <button onclick="loadNearbyUsers()" class="enable-location-btn">
