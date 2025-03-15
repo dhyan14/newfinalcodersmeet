@@ -42,13 +42,21 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'transport:', socket.conn.transport.name);
   
   socket.on('join-squad', (squadId) => {
-    socket.join(`squad_${squadId}`);
-    console.log(`Socket ${socket.id} joined squad ${squadId}`);
+    // Convert squadId to string to avoid ObjectId issues
+    const squadIdString = String(squadId);
+    socket.join(`squad_${squadIdString}`);
+    console.log(`Socket ${socket.id} joined squad ${squadIdString}`);
   });
   
   socket.on('squad-message', (data) => {
     console.log('Message received:', data);
-    io.to(`squad_${data.squadId}`).emit('new-message', data);
+    // Make sure we use the squadId as a string
+    const squadIdString = String(data.squadId);
+    io.to(`squad_${squadIdString}`).emit('new-message', {
+      ...data,
+      // Ensure squadId is a string
+      squadId: squadIdString
+    });
   });
   
   socket.on('disconnect', (reason) => {

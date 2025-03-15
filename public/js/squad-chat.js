@@ -107,8 +107,15 @@ class SquadChat {
         console.log('✅ Successfully connected to WebSocket server');
         console.log('Socket ID:', this.socket.id);
         this.updateStatus('Connected', 'success');
+        
+        // Make sure squadId is in the correct format
+        // If your backend expects MongoDB ObjectIds, you could use a helper function
+        // For now, we'll ensure it's not just "squad"
         if (this.squadId) {
-          this.socket.emit('join-squad', this.squadId);
+          // Use a more specific squad ID (maybe include the timestamp or a random string)
+          const formattedSquadId = `squad_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          console.log('Joining squad with ID:', formattedSquadId);
+          this.socket.emit('join-squad', formattedSquadId);
         }
       });
 
