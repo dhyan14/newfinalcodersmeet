@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS configuration for Vercel
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://codersmeet.vercel.app', 'https://www.codersmeet.vercel.app']
+    ? ['https://dhyanjain.me', 'https://www.dhyanjain.me', 'https://newfinalcodersmeet.vercel.app']
     : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
