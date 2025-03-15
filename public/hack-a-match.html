@@ -653,6 +653,37 @@
                     loadNearbyUsers();
                 });
             }
+
+            // Check if we're in development or production
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            // In development, we'll use mock data by default
+            if (isLocalhost) {
+                console.log('Development environment detected, using mock data');
+                window.mockMode = true;
+                mockServerForTesting();
+                loadFriendRequests();
+            } else {
+                // In production, try to use the real API
+                console.log('Production environment detected, attempting to use real API');
+                window.mockMode = false;
+                
+                // Check if the API is available
+                fetch(`${getApiUrl()}/health`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('API not available');
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('API is available:', data);
+                    })
+                    .catch(error => {
+                        console.error('API not available, falling back to mock data:', error);
+                        window.mockMode = true;
+                        mockServerForTesting();
+                        loadFriendRequests();
+                    });
+            }
         });
 
         // Updated loadNearbyUsers function with proper error handling
@@ -703,7 +734,7 @@
                 `;
 
                 // Update user's location on server
-                const locationUpdateResponse = await fetch('http://localhost:5000/api/users/location-by-email', {
+                const locationUpdateResponse = await fetch('http://localhost:3000/api/users/location-by-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -720,7 +751,7 @@
                 
                 // Fetch nearby users
                 const response = await fetch(
-                    `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
+                    `http://localhost:3000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
                 );
                 
                 if (!response.ok) {
@@ -831,7 +862,7 @@
                 
                 const currentUser = JSON.parse(userString);
                 
-                const response = await fetch('http://localhost:5000/api/send-friend-request', {
+                const response = await fetch('http://localhost:3000/api/send-friend-request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -876,7 +907,7 @@
                     return;
                 }
                 
-                const response = await fetch(`http://localhost:5000/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
+                const response = await fetch(`http://localhost:3000/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
                 if (!response.ok) {
                     throw new Error('Failed to load friend requests');
                 }
@@ -938,7 +969,7 @@
         // Handle accept/reject actions
         async function respondToRequest(requestId, action) {
             try {
-                const response = await fetch('http://localhost:5000/api/friend-request-response', {
+                const response = await fetch('http://localhost:3000/api/friend-request-response', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1117,34 +1148,10 @@
 
         // Call this at the end of your script to enable mocking
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if we should use mock data (server is down)
-            fetch('http://localhost:5000/api/health')
-                .then(response => {
-                    if (!response.ok) throw new Error('Server not available');
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Server is available, using real API:', data);
-                    // Force reload nearby users with real data
-                    const enableLocationBtn = document.getElementById('enableLocationBtn');
-                    if (enableLocationBtn) {
-                        enableLocationBtn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            console.log('Location button clicked - using real API');
-                            window.mockMode = false; // Disable mock mode
-                            loadNearbyUsers();
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.log('Server not available, using mock data:', error);
-                    mockServerForTesting();
-                    // Load mock data
-                    loadFriendRequests();
-                    
-                    // Set a flag to indicate we're in mock mode
-                    window.mockMode = true;
-                });
+            console.log('Forcing mock mode for development');
+            window.mockMode = true;
+            mockServerForTesting();
+            loadFriendRequests();
         });
 
         // Update the loadNearbyUsers function to check for mock mode
@@ -1350,6 +1357,15 @@
             };
             
             console.log('Mock server enabled for testing');
+        }
+
+        // Replace all API URLs with a function that determines the correct URL based on environment
+        function getApiUrl() {
+            // Check if we're in development or production
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            return isLocalhost 
+                ? 'http://localhost:3000/api' 
+                : 'https://your-vercel-app-name.vercel.app/api'; // Replace with your actual Vercel URL
         }
     </script>
 </body>

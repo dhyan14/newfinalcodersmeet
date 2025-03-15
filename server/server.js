@@ -10,9 +10,11 @@ app.use('/api', locationRoutes);
 app.use('/api', healthRoutes);
 app.use('/api', friendRequestRoutes);
 
-// Update CORS configuration
+// Update CORS configuration for Vercel
 app.use(cors({
-  origin: '*', // Allow all origins in development
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://your-frontend-domain.com', 'https://www.your-frontend-domain.com']
+    : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
