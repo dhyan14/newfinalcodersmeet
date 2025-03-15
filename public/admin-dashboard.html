@@ -231,66 +231,47 @@
             color: var(--primary-color);
         }
 
-        .stat-number {
-            font-size: 2rem;
+        .stat-card .stat-value {
+            font-size: 2.5rem;
             font-weight: bold;
             margin-bottom: 5px;
+            color: var(--text-color);
         }
 
-        .stat-label {
+        .stat-card .stat-label {
             color: var(--secondary-text);
             font-size: 0.9rem;
         }
 
-        .loading-spinner {
-            display: flex;
-            justify-content: center;
-            padding: 50px 0;
+        .table-responsive {
+            overflow-x: auto;
+            margin-bottom: 30px;
         }
 
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(7, 123, 50, 0.1);
-            border-radius: 50%;
-            border-top: 4px solid var(--primary-color);
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .d-none {
-            display: none !important;
-        }
-
-        .user-table {
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
         }
 
-        .user-table th,
-        .user-table td {
+        th, td {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
         }
 
-        .user-table th {
-            background-color: rgba(7, 123, 50, 0.1);
-            font-weight: 600;
+        th {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--secondary-text);
+            font-weight: 500;
         }
 
-        .user-table tr:hover {
-            background-color: rgba(255, 255, 255, 0.05);
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.03);
         }
 
         .status-badge {
             display: inline-block;
-            padding: 4px 10px;
+            padding: 5px 10px;
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 500;
@@ -299,24 +280,27 @@
         .status-active {
             background-color: rgba(40, 167, 69, 0.2);
             color: var(--success-color);
+            border: 1px solid rgba(40, 167, 69, 0.3);
         }
 
         .status-pending {
             background-color: rgba(255, 193, 7, 0.2);
             color: var(--warning-color);
+            border: 1px solid rgba(255, 193, 7, 0.3);
         }
 
         .progress-bar {
-            height: 6px;
+            height: 8px;
             background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
+            border-radius: 4px;
             overflow: hidden;
+            margin-top: 5px;
         }
 
         .progress-bar-fill {
             height: 100%;
             background-color: var(--primary-color);
-            transition: width 0.3s ease;
+            border-radius: 4px;
         }
 
         .user-actions {
@@ -327,11 +311,11 @@
         .action-btn {
             background: none;
             border: none;
-            cursor: pointer;
             font-size: 1rem;
-            transition: all 0.2s;
+            cursor: pointer;
             padding: 5px;
             border-radius: 4px;
+            transition: all 0.2s;
         }
 
         .action-btn.view {
@@ -350,53 +334,72 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
 
-        @media (max-width: 768px) {
-            .dashboard-layout {
-                grid-template-columns: 1fr;
-            }
+        .table-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
 
-            .sidebar {
-                display: none;
-            }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-color);
+        }
 
-            .main-content {
-                margin-left: 0;
-            }
+        /* Loading spinner */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            padding: 30px;
+        }
 
-            .stats-container {
-                grid-template-columns: 1fr;
-            }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .d-none {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <!-- Admin Authentication Section -->
+    <!-- Auth Section -->
     <div id="auth-section" class="auth-container">
         <h2 class="text-center mb-4">Admin Login</h2>
-        <div id="auth-error" class="alert-error d-none"></div>
+        <div id="auth-error" class="alert-error d-none">Invalid credentials</div>
         <form id="admin-login-form">
             <div class="form-group">
                 <label for="admin-email">Email</label>
-                <input type="email" class="form-control" id="admin-email" placeholder="admin@example.com" required>
+                <input type="email" id="admin-email" class="form-control" required>
             </div>
             <div class="form-group">
                 <label for="admin-password">Password</label>
-                <input type="password" class="form-control" id="admin-password" placeholder="Enter password" required>
+                <input type="password" id="admin-password" class="form-control" required>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Login</button>
         </form>
     </div>
 
-    <!-- Admin Dashboard Section -->
+    <!-- Admin Dashboard -->
     <div id="admin-dashboard" class="d-none">
         <!-- Header -->
         <header class="dashboard-header">
             <div class="header-container">
-                <a href="#" class="logo">Coders <span>MEET</span> Admin</a>
+                <a href="#" class="logo">Coders<span>MEET</span> Admin</a>
                 <div class="header-actions">
-                    <button id="logout-btn" class="btn btn-primary">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
+                    <button id="logout-btn" class="btn btn-primary">Logout</button>
                 </div>
             </div>
         </header>
@@ -406,68 +409,72 @@
             <!-- Sidebar -->
             <div class="sidebar">
                 <div class="menu-items">
-                    <div class="menu-item active" data-tab="dashboard">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    <div class="menu-item active" data-tab="overview">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Overview
                     </div>
                     <div class="menu-item" data-tab="users">
-                        <i class="fas fa-users"></i> Users
+                        <i class="fas fa-users"></i>
+                        Users
                     </div>
                     <div class="menu-item" data-tab="settings">
-                        <i class="fas fa-cog"></i> Settings
+                        <i class="fas fa-cog"></i>
+                        Settings
                     </div>
                 </div>
             </div>
 
             <!-- Main Content -->
             <div class="main-content">
-                <!-- Dashboard Tab -->
-                <div id="dashboard-tab" class="tab-content active">
-                    <h2>Dashboard Overview</h2>
+                <!-- Overview Tab -->
+                <div id="overview-tab" class="tab-content active">
+                    <h2 class="section-title">Dashboard Overview</h2>
+                    
+                    <!-- Stats Cards -->
                     <div class="stats-container">
                         <div class="stat-card">
                             <i class="fas fa-users"></i>
-                            <div class="stat-number" id="total-users">0</div>
+                            <div id="total-users" class="stat-value">0</div>
                             <div class="stat-label">Total Users</div>
                         </div>
                         <div class="stat-card">
                             <i class="fas fa-user-plus"></i>
-                            <div class="stat-number" id="new-users">0</div>
+                            <div id="new-users" class="stat-value">0</div>
                             <div class="stat-label">New Users Today</div>
                         </div>
                         <div class="stat-card">
-                            <i class="fas fa-code"></i>
-                            <div class="stat-number" id="total-projects">0</div>
-                            <div class="stat-label">Total Projects</div>
+                            <i class="fas fa-project-diagram"></i>
+                            <div id="total-projects" class="stat-value">0</div>
+                            <div class="stat-label">Projects</div>
                         </div>
                         <div class="stat-card">
-                            <i class="fas fa-handshake"></i>
-                            <div class="stat-number" id="total-connections">0</div>
-                            <div class="stat-label">Connections Made</div>
+                            <i class="fas fa-link"></i>
+                            <div id="total-connections" class="stat-value">0</div>
+                            <div class="stat-label">Connections</div>
                         </div>
                     </div>
-
+                    
+                    <!-- Recent Users -->
                     <div class="dashboard-card">
-                        <h3>Recent Activity</h3>
-                        <p>This panel will show recent user activity on the platform.</p>
+                        <div class="section-title">Recent Activity</div>
+                        <p>Welcome to the Coders MEET Admin Dashboard.</p>
                     </div>
                 </div>
 
                 <!-- Users Tab -->
-                <div id="users-tab" class="tab-content">
+                <div id="users-tab" class="tab-content d-none">
+                    <h2 class="section-title">User Management</h2>
+                    
                     <div class="dashboard-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h2>User Management</h2>
+                        <div class="table-actions">
+                            <div>All Users</div>
                             <button id="refresh-users-btn" class="btn btn-primary">
                                 <i class="fas fa-sync-alt"></i> Refresh
                             </button>
                         </div>
                         
-                        <div id="loading-spinner" class="loading-spinner d-none">
-                            <div class="spinner"></div>
-                        </div>
-                        
                         <div class="table-responsive">
-                            <table class="user-table">
+                            <table>
                                 <thead>
                                     <tr>
                                         <th>ID</th>
@@ -483,15 +490,21 @@
                                     <!-- User data will be populated here -->
                                 </tbody>
                             </table>
+                            
+                            <!-- Loading Spinner -->
+                            <div id="loading-spinner" class="loading-spinner d-none">
+                                <div class="spinner"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Settings Tab -->
-                <div id="settings-tab" class="tab-content">
+                <div id="settings-tab" class="tab-content d-none">
+                    <h2 class="section-title">Admin Settings</h2>
+                    
                     <div class="dashboard-card">
-                        <h2>Admin Settings</h2>
-                        <p>This panel will contain admin settings and configurations.</p>
+                        <p>Settings options will be available in future updates.</p>
                     </div>
                 </div>
             </div>
@@ -508,8 +521,10 @@
         const adminPassword = document.getElementById('admin-password');
         const logoutBtn = document.getElementById('logout-btn');
         const refreshUsersBtn = document.getElementById('refresh-users-btn');
-        const usersTableBody = document.getElementById('users-table-body');
         const loadingSpinner = document.getElementById('loading-spinner');
+        const usersTableBody = document.getElementById('users-table-body');
+        
+        // Dashboard stats elements
         const totalUsersElement = document.getElementById('total-users');
         const newUsersElement = document.getElementById('new-users');
         const totalProjectsElement = document.getElementById('total-projects');
@@ -524,7 +539,7 @@
             }
         }
 
-        // Check if already authenticated
+        // Check if user is authenticated
         function checkAuth() {
             console.log('Checking authentication...');
             
@@ -534,21 +549,26 @@
             })
             .then(response => {
                 console.log('Auth check status:', response.status);
-                if (response.ok) {
-                    return response.json();
-                } else {
+                if (!response.ok) {
                     throw new Error('Not authenticated');
                 }
+                return response.json();
             })
             .then(data => {
-                console.log('Auth check successful:', data);
-                // Show admin dashboard
-                toggleDisplay(authSection, false);
-                toggleDisplay(adminDashboard, true);
-                
-                // Fetch dashboard data and users
-                fetchDashboardStats();
-                fetchUsers();
+                console.log('Auth check data:', data);
+                if (data.isAdmin) {
+                    // User is authenticated as admin
+                    toggleDisplay(authSection, false);
+                    toggleDisplay(adminDashboard, true);
+                    
+                    // Load initial data
+                    fetchDashboardStats();
+                    fetchUsers();
+                } else {
+                    // Not an admin
+                    toggleDisplay(authSection, true);
+                    toggleDisplay(adminDashboard, false);
+                }
             })
             .catch(error => {
                 console.error('Auth check error:', error);
@@ -769,6 +789,7 @@
                 item.addEventListener('click', function() {
                     // Remove active class from all tabs
                     document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active', 'd-none'));
                     document.querySelectorAll('.tab-content').forEach(t => t.classList.add('d-none'));
                     
                     // Add active class to selected tab
