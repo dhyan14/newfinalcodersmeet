@@ -116,45 +116,59 @@
         const welcomeMessage = document.getElementById('welcomeMessage');
         const logoutBtn = document.getElementById('logoutBtn');
         
-        // Check if already logged in using the simplified endpoint
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Checking authentication status...');
+        // Check authentication using the direct endpoint
+        function checkAuth() {
+            console.log('Checking auth status...');
             
-            fetch('/api/admin-ping', {
+            fetch('/api/admin-ping-direct', {
                 method: 'GET',
                 credentials: 'include'
             })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Auth check response:', data);
+            .then(response => {
+                console.log('Auth response status:', response.status);
+                return response.text();
+            })
+            .then(text => {
+                console.log('Raw response:', text);
                 
-                if (data.isAdmin) {
-                    // Show dashboard
-                    loginFormContainer.classList.add('d-none');
-                    dashboardContainer.classList.remove('d-none');
-                } else {
-                    // Show login form
+                try {
+                    const data = JSON.parse(text);
+                    console.log('Parsed response:', data);
+                    
+                    if (data.isAdmin) {
+                        // Show dashboard
+                        loginFormContainer.classList.add('d-none');
+                        dashboardContainer.classList.remove('d-none');
+                    } else {
+                        // Show login form
+                        loginFormContainer.classList.remove('d-none');
+                        dashboardContainer.classList.add('d-none');
+                    }
+                } catch (e) {
+                    console.error('Error parsing JSON:', e);
                     loginFormContainer.classList.remove('d-none');
                     dashboardContainer.classList.add('d-none');
                 }
             })
             .catch(error => {
                 console.error('Auth check error:', error);
-                // Default to login form on error
                 loginFormContainer.classList.remove('d-none');
                 dashboardContainer.classList.add('d-none');
             });
-        });
+        }
         
-        // Handle login
+        // Call the check on page load
+        document.addEventListener('DOMContentLoaded', checkAuth);
+        
+        // Handle login form submission
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
             const email = emailInput.value;
             const password = passwordInput.value;
             
-            console.log('Attempting login with:', email);
             loginError.style.display = 'none';
+            console.log('Attempting login with:', email);
             
             fetch('/api/admin/login', {
                 method: 'POST',

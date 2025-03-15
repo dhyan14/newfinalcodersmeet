@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Auth Test</h1>
+    <div id="result">Checking...</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/admin-ping-direct', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => {
+                document.getElementById('result').innerHTML += 
+                    '<p>Response status: ' + response.status + '</p>';
+                return response.text();
+            })
+            .then(text => {
+                document.getElementById('result').innerHTML += 
+                    '<p>Response body:</p><pre>' + text + '</pre>';
+                
+                try {
+                    const data = JSON.parse(text);
+                    document.getElementById('result').innerHTML += 
+                        '<p>Parsed JSON: ' + JSON.stringify(data) + '</p>';
+                } catch (e) {
+                    document.getElementById('result').innerHTML += 
+                        '<p>Error parsing JSON: ' + e.message + '</p>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML += 
+                    '<p>Error: ' + error.message + '</p>';
+            });
+        });
+    </script>
+</body>
+</html> 

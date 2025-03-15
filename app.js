@@ -28,6 +28,17 @@ app.use(session({
 // Static files middleware
 app.use(express.static('public'));
 
+// Add this direct route immediately after your static files middleware
+app.get('/api/admin-ping-direct', (req, res) => {
+  // Send plain text for debugging
+  res.set('Content-Type', 'application/json');
+  
+  if (req.session && req.session.userId && req.session.isAdmin) {
+    return res.send(JSON.stringify({ status: 'authenticated', isAdmin: true }));
+  }
+  return res.send(JSON.stringify({ status: 'unauthenticated', isAdmin: false }));
+});
+
 // Add this after your static middleware but before your API routes
 app.get('/admin-dashboard.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
