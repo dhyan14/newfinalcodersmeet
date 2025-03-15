@@ -87,7 +87,7 @@ class SquadChat {
       
       // Use a CORS proxy as a temporary solution
       const wsServerUrl = isProduction 
-        ? 'https://cors-anywhere.herokuapp.com/https://chat-websocket-server-lk6w.onrender.com' 
+        ? 'https://chat-websocket-server-lk6w.onrender.com' 
         : window.location.origin;
       
       console.log('Using WebSocket server:', wsServerUrl);
@@ -216,6 +216,45 @@ class SquadChat {
   showError(message) {
     console.error(message);
     this.updateStatus(message, 'error');
+  }
+
+  // Initialize Firebase connection in your SquadChat class
+  initializeFirebase() {
+    // Check if Firebase is already initialized
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID"
+      });
+    }
+    
+    this.db = firebase.database();
+    this.messagesRef = this.db.ref(`squads/${this.squadId}/messages`);
+    
+    // Listen for messages
+    this.messagesRef.on('child_added', (snapshot) => {
+      const message = snapshot.val();
+      this.displayMessage(message);
+    });
+  }
+
+  // Send message with Firebase
+  sendMessage() {
+    if (!this.messageInput || !this.db) return;
+    
+    const message = this.messageInput.value.trim();
+    if (!message) return;
+    
+    this.messagesRef.push({
+      squadId: this.squadId,
+      message: message,
+      sender: this.user.username || 'Anonymous',
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+    
+    this.messageInput.value = '';
   }
 }
 

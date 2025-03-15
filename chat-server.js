@@ -13,19 +13,39 @@ app.use((req, res, next) => {
 
 // CORS middleware - must come before routes
 app.use(cors({
-  origin: ['https://www.dhyanjain.me', 'https://newfinalcodersmeet.vercel.app', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'OPTIONS'],
+  origin: function(origin, callback) {
+    // Allow any origin
+    callback(null, true);
+  },
+  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['X-Requested-With', 'Content-Type', 'Authorization'],
   credentials: true
 }));
 
-// Add explicit CORS headers middleware
+// Socket.IO config
+const io = new Server(server, {
+  cors: {
+    origin: function(origin, callback) {
+      // Allow any origin for Socket.IO too
+      callback(null, true);
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["X-Requested-With", "Content-Type", "Authorization"],
+    credentials: true
+  },
+  transports: ['polling', 'websocket'], // Prioritize polling
+  allowUpgrades: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+// Set permissive CORS headers for all responses
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://www.dhyanjain.me');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.header('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
   
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -38,19 +58,6 @@ app.use(express.json());
 
 // Create HTTP server
 const server = http.createServer(app);
-
-// Configure Socket.IO
-const io = new Server(server, {
-  cors: {
-    origin: ['https://www.dhyanjain.me', 'https://newfinalcodersmeet.vercel.app', 'http://localhost:3000'],
-    methods: ["GET", "POST"],
-    credentials: true
-  },
-  transports: ['polling', 'websocket'], // Prioritize polling
-  allowUpgrades: true,
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
