@@ -239,6 +239,278 @@ app.get('/*.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
+// Update user location
+app.post('/api/users/location-by-email', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { email, latitude, longitude } = req.body;
+        
+        if (!email || latitude === undefined || longitude === undefined) {
+            return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
+        }
+        
+        // Update user's location in the database
+        const user = await User.findOneAndUpdate(
+            { email }, 
+            { 
+                location: {
+                    type: 'Point',
+                    coordinates: [longitude, latitude] // GeoJSON format: [longitude, latitude]
+                },
+                lastLocationUpdate: new Date()
+            },
+            { new: true }
+        );
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.json({ success: true, message: 'Location updated successfully' });
+    } catch (error) {
+        console.error('Error updating location:', error);
+        res.status(500).json({ error: 'Failed to update location', details: error.message });
+    }
+});
+
+// Get nearby users
+app.get('/api/users/nearby-by-email', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { email, latitude, longitude } = req.query;
+        
+        if (!email || !latitude || !longitude) {
+            return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
+        }
+        
+        // Find the current user to exclude them from results
+        const currentUser = await User.findOne({ email });
+        if (!currentUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Define search ranges in kilometers
+        const ranges = [1, 5, 10]; // 1km, 5km, 10km ranges
+        const results = [];
+        
+        // Convert from string to number
+        const lat = parseFloat(latitude);
+        const lng = parseFloat(longitude);
+        
+        // For each range, find users within that distance
+        for (const range of ranges) {
+            // Use MongoDB's $geoNear aggregation to find nearby users
+            const nearbyUsers = await User.aggregate([
+                {
+                    $geoNear: {
+                        near: {
+                            type: 'Point',
+                            coordinates: [lng, lat] // GeoJSON format: [longitude, latitude]
+                        },
+                        distanceField: 'distance', // This will add the distance in meters to each result
+                        maxDistance: range * 1000, // Convert km to meters
+                        spherical: true,
+                        query: { 
+                            _id: { $ne: currentUser._id }, // Exclude current user
+                            lastLocationUpdate: { 
+                                $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Only include users active in the last 24 hours
+                            }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        fullName: 1,
+                        username: 1,
+                        email: 1,
+                        distance: { $divide: ['$distance', 1000] }, // Convert meters to kilometers
+                        lastLocationUpdate: 1
+                    }
+                }
+            ]);
+            
+            results.push({
+                range,
+                users: nearbyUsers
+            });
+        }
+        
+        res.json(results);
+    } catch (error) {
+        console.error('Error finding nearby users:', error);
+        res.status(500).json({ error: 'Failed to find nearby users', details: error.message });
+    }
+});
+
+// Send friend request
+app.post('/api/send-friend-request', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { senderEmail, receiverEmail } = req.body;
+        
+        if (!senderEmail || !receiverEmail) {
+            return res.status(400).json({ error: 'Sender and receiver emails are required' });
+        }
+        
+        if (senderEmail === receiverEmail) {
+            return res.status(400).json({ error: 'Cannot send friend request to yourself' });
+        }
+        
+        // Find sender and receiver
+        const sender = await User.findOne({ email: senderEmail });
+        const receiver = await User.findOne({ email: receiverEmail });
+        
+        if (!sender || !receiver) {
+            return res.status(404).json({ error: 'Sender or receiver not found' });
+        }
+        
+        // Check if friend request already exists
+        const existingRequest = await FriendRequest.findOne({
+            $or: [
+                { sender: sender._id, receiver: receiver._id },
+                { sender: receiver._id, receiver: sender._id }
+            ]
+        });
+        
+        if (existingRequest) {
+            return res.status(400).json({ error: 'Friend request already exists' });
+        }
+        
+        // Check if they are already friends
+        if (sender.connections && sender.connections.includes(receiver._id)) {
+            return res.status(400).json({ error: 'Already connected with this user' });
+        }
+        
+        // Create new friend request
+        const newFriendRequest = new FriendRequest({
+            sender: sender._id,
+            receiver: receiver._id,
+            status: 'pending',
+            createdAt: new Date()
+        });
+        
+        await newFriendRequest.save();
+        
+        res.status(201).json({ 
+            success: true, 
+            message: 'Friend request sent successfully'
+        });
+    } catch (error) {
+        console.error('Error sending friend request:', error);
+        res.status(500).json({ error: 'Failed to send friend request', details: error.message });
+    }
+});
+
+// Get friend requests
+app.get('/api/friend-requests', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { email } = req.query;
+        
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+        
+        // Find user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Find pending friend requests where user is the receiver
+        const requests = await FriendRequest.find({
+            receiver: user._id,
+            status: 'pending'
+        }).populate('sender', 'fullName email');
+        
+        // Calculate time ago for each request
+        const requestsWithTimeAgo = requests.map(request => {
+            const createdAt = new Date(request.createdAt);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - createdAt) / 1000);
+            
+            let timeAgo;
+            if (diffInSeconds < 60) {
+                timeAgo = `${diffInSeconds} seconds ago`;
+            } else if (diffInSeconds < 3600) {
+                timeAgo = `${Math.floor(diffInSeconds / 60)} minutes ago`;
+            } else if (diffInSeconds < 86400) {
+                timeAgo = `${Math.floor(diffInSeconds / 3600)} hours ago`;
+            } else {
+                timeAgo = `${Math.floor(diffInSeconds / 86400)} days ago`;
+            }
+            
+            return {
+                _id: request._id,
+                sender: request.sender,
+                status: request.status,
+                createdAt: request.createdAt,
+                timeAgo
+            };
+        });
+        
+        res.json(requestsWithTimeAgo);
+    } catch (error) {
+        console.error('Error getting friend requests:', error);
+        res.status(500).json({ error: 'Failed to get friend requests', details: error.message });
+    }
+});
+
+// Respond to friend request
+app.post('/api/friend-request-response', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { requestId, action } = req.body;
+        
+        if (!requestId || !action) {
+            return res.status(400).json({ error: 'Request ID and action are required' });
+        }
+        
+        if (action !== 'accept' && action !== 'reject') {
+            return res.status(400).json({ error: 'Action must be either "accept" or "reject"' });
+        }
+        
+        // Find the friend request
+        const request = await FriendRequest.findById(requestId);
+        if (!request) {
+            return res.status(404).json({ error: 'Friend request not found' });
+        }
+        
+        if (action === 'accept') {
+            // Add each user to the other's connections array
+            await User.findByIdAndUpdate(
+                request.sender,
+                { $addToSet: { connections: request.receiver } }
+            );
+            
+            await User.findByIdAndUpdate(
+                request.receiver,
+                { $addToSet: { connections: request.sender } }
+            );
+            
+            // Update request status
+            request.status = 'accepted';
+            await request.save();
+        } else {
+            // If rejected, just update the status
+            request.status = 'rejected';
+            await request.save();
+        }
+        
+        res.json({ 
+            success: true, 
+            message: `Friend request ${action === 'accept' ? 'accepted' : 'rejected'} successfully`
+        });
+    } catch (error) {
+        console.error(`Error ${req.body.action}ing friend request:`, error);
+        res.status(500).json({ 
+            error: `Failed to ${req.body.action} friend request`, 
+            details: error.message 
+        });
+    }
+});
+
 // Catch-all route
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

@@ -39,8 +39,19 @@ const userSchema = new mongoose.Schema({
         level: String
     }],
     location: {
-        type: { type: String, default: 'Point' },
-        coordinates: { type: [Number], default: [0, 0] }
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number],  // [longitude, latitude]
+            default: [0, 0]
+        }
+    },
+    lastLocationUpdate: {
+        type: Date,
+        default: null
     },
     locationUpdatedAt: { type: Date }
 }, { 
