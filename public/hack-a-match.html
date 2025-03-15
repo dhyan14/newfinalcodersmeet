@@ -633,6 +633,21 @@
     </div>
 
     <script>
+        // Add this at the top of your script section (before any other functions)
+        function getApiBaseUrl() {
+            // Check if we're running on localhost
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return 'http://localhost:3001';
+            }
+            
+            // For Vercel or other production environments, use relative URLs or the domain
+            // This allows the browser to automatically use the same domain the page is loaded from
+            return '';
+        }
+
+        // Define this once at the beginning of your script
+        const API_BASE_URL = getApiBaseUrl();
+
         // Replace the existing DOMContentLoaded event listener section with this updated version
         document.addEventListener('DOMContentLoaded', function() {
             const user = localStorage.getItem('user');
@@ -715,7 +730,8 @@
                             `;
 
                             // Update user's location on server
-                            const locationUpdate = await fetch('http://localhost:5000/api/users/location-by-email', {
+                            const API_BASE_URL = 'http://localhost:3001';
+                            const locationUpdate = await fetch(`${API_BASE_URL}/api/users/location-by-email`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -732,7 +748,7 @@
                             
                             // Fetch nearby users
                             const response = await fetch(
-                                `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
+                                `${API_BASE_URL}/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
                             );
                             
                             if (!response.ok) {
@@ -924,7 +940,8 @@
                     return;
                 }
                 
-                const response = await fetch(`http://localhost:5000/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
+                const API_BASE_URL = 'http://localhost:3001';
+                const response = await fetch(`${API_BASE_URL}/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
                 if (!response.ok) {
                     throw new Error('Failed to load friend requests');
                 }
@@ -986,7 +1003,8 @@
         // Handle accept/reject actions
         async function respondToRequest(requestId, action) {
             try {
-                const response = await fetch('http://localhost:5000/api/friend-request-response', {
+                const API_BASE_URL = 'http://localhost:3001';
+                const response = await fetch(`${API_BASE_URL}/api/friend-request-response`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1116,7 +1134,8 @@
                 
                 const currentUser = JSON.parse(userString);
                 
-                const response = await fetch('http://localhost:5000/api/send-friend-request', {
+                const API_BASE_URL = 'http://localhost:3001';
+                const response = await fetch(`${API_BASE_URL}/api/send-friend-request`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
