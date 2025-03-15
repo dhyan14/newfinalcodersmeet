@@ -1169,27 +1169,6 @@
                 alert(error.message);
             }
         }
-
-        // Check if user is admin and redirect if needed
-        function checkAdminStatus() {
-            fetch('/api/admin/check-auth', {
-                method: 'GET',
-                credentials: 'include'
-            })
-            .then(response => {
-                if (response.ok) {
-                    // User is admin, redirect to admin dashboard
-                    window.location.href = '/admin-dashboard.html';
-                }
-                // If not admin, stay on regular dashboard
-            })
-            .catch(error => {
-                console.error('Admin check error:', error);
-            });
-        }
-        
-        // Run the check when page loads
-        document.addEventListener('DOMContentLoaded', checkAdminStatus);
     </script>
 </body>
 </html> 

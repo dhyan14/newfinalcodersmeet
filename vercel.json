@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "app.js",
+      "src": "index.js",
       "use": "@vercel/node"
     },
     {
@@ -12,28 +12,25 @@
   ],
   "routes": [
     {
-      "src": "/api/admin/login",
-      "dest": "app.js"
+      "src": "/api/(.*)",
+      "dest": "index.js",
+      "headers": {
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+        "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+      }
     },
     {
-      "src": "/api/admin/logout",
-      "dest": "app.js"
+      "src": "/health",
+      "dest": "index.js"
     },
     {
-      "src": "/api/admin/check-auth",
-      "dest": "app.js"
-    },
-    {
-      "src": "/api/admin-ping-direct",
-      "dest": "app.js"
-    },
-    {
-      "src": "/api/test-login",
-      "dest": "app.js"
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "app.js"
+      "dest": "public/$1"
     }
   ],
   "env": {

@@ -416,9 +416,6 @@
                     }
                 });
             });
-            
-            // Check admin status
-            checkAdminStatus();
         });
         
         function hamburg() {
@@ -427,22 +424,6 @@
         
         function cancel() {
             document.querySelector('.dropdown').style.display = 'none';
-        }
-        
-        function checkAdminStatus() {
-            fetch('/api/admin/check-auth', {
-                method: 'GET',
-                credentials: 'include'
-            })
-            .then(response => {
-                if (response.ok) {
-                    // User is admin, redirect to admin dashboard
-                    window.location.href = '/admin-dashboard.html';
-                }
-            })
-            .catch(error => {
-                console.error('Admin check error:', error);
-            });
         }
     </script>
 </body>
