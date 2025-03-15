@@ -217,22 +217,33 @@ async function connectToDatabase() {
     return cachedDb;
   }
 
-  const client = await mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    maxPoolSize: 10, // Limit connections for serverless
-    serverSelectionTimeoutMS: 5000
-  });
+  try {
+    console.log('Connecting to MongoDB...');
+    
+    // Make sure your MONGODB_URI is properly set in your .env file 
+    // It should look something like: mongodb+srv://username:password@cluster.mongodb.net/dbname
+    const client = await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      // Don't use maxPoolSize for Atlas connections - it will manage connections automatically
+      serverSelectionTimeoutMS: 5000
+    });
 
-  cachedDb = mongoose.connection;
-  
-  // Handle connection errors
-  cachedDb.on('error', (err) => {
-    console.error('MongoDB connection error:', err);
-    cachedDb = null;
-  });
+    cachedDb = mongoose.connection;
+    
+    console.log('Successfully connected to MongoDB');
+    
+    // Handle connection errors
+    cachedDb.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+      cachedDb = null;
+    });
 
-  return cachedDb;
+    return cachedDb;
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    throw error;
+  }
 }
 
 // Health check endpoint
@@ -1029,5 +1040,59 @@ app.post('/api/friend-request-response', async (req, res) => {
   } catch (error) {
     console.error('Error processing friend request:', error);
     res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// Make sure the geospatial index is created before using location queries
+mongoose.connection.once('open', async () => {
+  try {
+    // Create the 2dsphere index if it doesn't exist
+    await mongoose.connection.collection('users').createIndex({ "location": "2dsphere" });
+    console.log('Geospatial index created successfully');
+  } catch (error) {
+    console.error('Error creating geospatial index:', error);
+  }
+});
+
+// Add this diagnostic endpoint to check geospatial capabilities
+app.get('/api/geo-diagnostic', async (req, res) => {
+  try {
+    await connectToDatabase();
+    
+    // Check if the 2dsphere index exists
+    const indexes = await mongoose.connection.collection('users').indexes();
+    const has2dSphereIndex = indexes.some(index => 
+      index.key && index.key.location === '2dsphere'
+    );
+    
+    // Test with a simple geo query
+    const testQuery = await mongoose.connection.collection('users').find({
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [0, 0]  // Test with coordinates at origin
+          },
+          $maxDistance: 50000000  // 50,000 km (larger than Earth)
+        }
+      }
+    }).limit(1).toArray();
+    
+    res.json({
+      status: 'ok',
+      mongoDbConnected: !!cachedDb,
+      has2dSphereIndex,
+      geoQueryExecuted: true,
+      userCount: await User.countDocuments(),
+      testQueryResults: testQuery.length,
+      message: 'Geospatial diagnostics completed successfully'
+    });
+  } catch (error) {
+    console.error('Geo-diagnostic error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }); 
