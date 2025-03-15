@@ -1114,6 +1114,207 @@
                 return 'Unknown';
             }
         }
+
+        // Add this function to simulate server responses for testing
+        function mockServerForTesting() {
+            // Override the loadNearbyUsers function with a mock version
+            window.loadNearbyUsers = async function() {
+                console.log('Mock loadNearbyUsers called');
+                const locationStatus = document.getElementById('locationStatus');
+                const membersList = document.getElementById('communityMembersList');
+                
+                try {
+                    // Show loading state
+                    locationStatus.innerHTML = `
+                        <div class="location-status loading">
+                            <i class="fas fa-spinner"></i> 
+                            Requesting location access...
+                        </div>
+                    `;
+                    
+                    // Simulate getting location
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    locationStatus.innerHTML = `
+                        <div class="location-status loading">
+                            <i class="fas fa-spinner"></i> 
+                            Location found! Searching for nearby coders...
+                        </div>
+                    `;
+                    
+                    // Simulate API delay
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    // Mock nearby users data
+                    const mockUsers = [
+                        {
+                            _id: '1',
+                            fullName: 'John Doe',
+                            email: 'john@example.com',
+                            distance: 1.2
+                        },
+                        {
+                            _id: '2',
+                            fullName: 'Jane Smith',
+                            email: 'jane@example.com',
+                            distance: 2.5
+                        },
+                        {
+                            _id: '3',
+                            fullName: 'Alex Johnson',
+                            email: 'alex@example.com',
+                            distance: 4.8
+                        }
+                    ];
+                    
+                    // Display mock results
+                    let usersHTML = '<div class="range-header">5km Range</div>';
+                    usersHTML += mockUsers.map(user => {
+                        const initials = user.fullName
+                            .split(' ')
+                            .map(name => name[0])
+                            .join('')
+                            .toUpperCase();
+                        
+                        return `
+                        <div class="user-item" data-user-id="${user._id}">
+                            <div class="user-avatar">${initials}</div>
+                            <div class="user-info">
+                                <div class="user-name">${user.fullName}</div>
+                                <div class="user-status">${user.distance.toFixed(1)}km away</div>
+                            </div>
+                            <div class="user-actions">
+                                <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('');
+                    
+                    membersList.innerHTML = usersHTML;
+                    
+                    // Update status to success
+                    locationStatus.innerHTML = `
+                        <div>
+                            <i class="fas fa-check-circle"></i> 
+                            Location enabled - showing nearby coders
+                            <button onclick="loadNearbyUsers()" class="refresh-btn">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                    
+                } catch (error) {
+                    console.error('Error in mock loadNearbyUsers:', error);
+                    handleLocationError(error);
+                }
+            };
+            
+            // Also mock the friend requests
+            window.loadFriendRequests = function() {
+                const container = document.getElementById('friendRequestsContainer');
+                const requestCount = document.getElementById('requestCount');
+                
+                // Mock data
+                const mockRequests = [
+                    {
+                        _id: 'req1',
+                        sender: {
+                            fullName: 'Robert Chen'
+                        },
+                        timeAgo: '2 hours ago'
+                    }
+                ];
+                
+                // Update the badge count
+                requestCount.textContent = mockRequests.length;
+                
+                // Display the requests
+                container.innerHTML = mockRequests.map(request => {
+                    const initials = request.sender.fullName
+                        .split(' ')
+                        .map(name => name[0])
+                        .join('')
+                        .toUpperCase();
+                    
+                    return `
+                        <div class="friend-request-item" data-request-id="${request._id}">
+                            <div class="request-avatar">${initials}</div>
+                            <div class="request-info">
+                                <div class="request-name">${request.sender.fullName}</div>
+                                <div class="request-time">${request.timeAgo}</div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="accept-btn" onclick="respondToRequest('${request._id}', 'accept')">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="reject-btn" onclick="respondToRequest('${request._id}', 'reject')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            };
+            
+            // Mock the respond to request function
+            window.respondToRequest = function(requestId, action) {
+                const requestElement = document.querySelector(`.friend-request-item[data-request-id="${requestId}"]`);
+                if (requestElement) {
+                    requestElement.style.height = requestElement.offsetHeight + 'px';
+                    requestElement.style.overflow = 'hidden';
+                    requestElement.style.opacity = '0';
+                    requestElement.style.transition = 'all 0.3s ease';
+                    
+                    setTimeout(() => {
+                        requestElement.style.height = '0';
+                        setTimeout(() => {
+                            requestElement.remove();
+                            
+                            // Update the count
+                            const requestCount = document.getElementById('requestCount');
+                            const currentCount = parseInt(requestCount.textContent);
+                            requestCount.textContent = currentCount - 1;
+                            
+                            // Check if there are no more requests
+                            if (currentCount - 1 === 0) {
+                                document.getElementById('friendRequestsContainer').innerHTML = `
+                                    <div class="empty-requests">
+                                        <p>No pending friend requests</p>
+                                    </div>
+                                `;
+                            }
+                        }, 300);
+                    }, 10);
+                    
+                    alert(`Friend request ${action === 'accept' ? 'accepted' : 'rejected'}`);
+                }
+            };
+            
+            // Mock add friend function
+            window.addFriend = function(friendEmail) {
+                alert(`Friend request sent to ${friendEmail}`);
+            };
+            
+            console.log('Mock server enabled for testing');
+        }
+
+        // Call this at the end of your script to enable mocking
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if we should use mock data (server is down)
+            fetch('http://localhost:5000/api/health')
+                .then(response => {
+                    if (!response.ok) throw new Error('Server not available');
+                    console.log('Server is available, using real API');
+                })
+                .catch(error => {
+                    console.log('Server not available, using mock data:', error);
+                    mockServerForTesting();
+                    // Load mock data
+                    loadFriendRequests();
+                });
+        });
     </script>
 </body>
 </html> 
