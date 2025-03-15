@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// Update user's location
+// Update user location
 router.post('/users/update-location', async (req, res) => {
     try {
         const { email, latitude, longitude } = req.body;
@@ -14,20 +14,19 @@ router.post('/users/update-location', async (req, res) => {
             });
         }
         
-        // Update user's location in database
-        const updatedUser = await User.findOneAndUpdate(
+        // Find and update user location
+        const user = await User.findOneAndUpdate(
             { email },
             { 
                 location: {
                     type: 'Point',
                     coordinates: [longitude, latitude] // GeoJSON format: [longitude, latitude]
-                },
-                lastLocationUpdate: new Date()
+                }
             },
             { new: true }
         );
         
-        if (!updatedUser) {
+        if (!user) {
             return res.status(404).json({ 
                 success: false, 
                 message: 'User not found' 
@@ -36,14 +35,16 @@ router.post('/users/update-location', async (req, res) => {
         
         res.status(200).json({ 
             success: true, 
-            message: 'Location updated successfully' 
+            message: 'Location updated successfully',
+            location: user.location
         });
         
     } catch (error) {
         console.error('Error updating location:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Server error while updating location' 
+            message: 'Server error while updating location',
+            error: error.message
         });
     }
 });
@@ -82,73 +83,50 @@ router.get('/users/nearby', async (req, res) => {
         const ranges = [1, 5, 10, 25];
         const results = [];
         
-        // For each range, find users within that distance
+        // Convert kilometers to radians (Earth's radius is approximately 6371 km)
+        const kmToRadians = (km) => km / 6371;
+        
+        // Search for users in each range
         for (const range of ranges) {
-            // Convert km to meters for MongoDB
-            const distanceInMeters = range * 1000;
-            
-            // Find users within the range
-            const usersInRange = await User.find({
+            const nearbyUsers = await User.find({
                 email: { $ne: email }, // Exclude current user
                 location: {
-                    $near: {
-                        $geometry: currentUser.location,
-                        $maxDistance: distanceInMeters
+                    $nearSphere: {
+                        $geometry: {
+                            type: 'Point',
+                            coordinates: currentUser.location.coordinates
+                        },
+                        $maxDistance: range * 1000 // Convert km to meters
                     }
                 }
-            }).select('fullName email location');
+            }).select('fullName email bio skills avatarUrl');
             
-            // Calculate actual distance for each user
-            const usersWithDistance = usersInRange.map(user => {
-                // Calculate distance in kilometers using the Haversine formula
-                const distance = calculateDistance(
-                    currentUser.location.coordinates[1], // latitude
-                    currentUser.location.coordinates[0], // longitude
-                    user.location.coordinates[1], // latitude
-                    user.location.coordinates[0]  // longitude
-                );
-                
-                return {
-                    _id: user._id,
-                    fullName: user.fullName,
-                    email: user.email,
-                    distance
-                };
-            });
-            
-            // Add to results
-            results.push({
-                range,
-                users: usersWithDistance
-            });
+            if (nearbyUsers.length > 0) {
+                results.push({
+                    range: range,
+                    users: nearbyUsers.map(user => ({
+                        ...user.toObject(),
+                        distance: range // Approximate distance
+                    }))
+                });
+                break; // Stop after finding users in the first range
+            }
         }
         
-        res.status(200).json(results);
+        res.status(200).json({
+            success: true,
+            currentLocation: currentUser.location,
+            results: results
+        });
         
     } catch (error) {
         console.error('Error finding nearby users:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Server error while finding nearby users' 
+            message: 'Server error while finding nearby users',
+            error: error.message
         });
     }
 });
-
-// Helper function to calculate distance between two points using Haversine formula
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the Earth in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    
-    const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in kilometers
-    
-    return distance;
-}
 
 module.exports = router; 

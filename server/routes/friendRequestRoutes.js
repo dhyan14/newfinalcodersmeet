@@ -41,49 +41,47 @@ router.post('/send-friend-request', async (req, res) => {
       });
     }
     
-    // Check if sender and recipient exist
+    if (senderEmail === recipientEmail) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Cannot send friend request to yourself' 
+      });
+    }
+    
+    // Find sender and recipient
     const sender = await User.findOne({ email: senderEmail });
     const recipient = await User.findOne({ email: recipientEmail });
     
     if (!sender || !recipient) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Sender or recipient not found' 
+        error: 'One or both users not found' 
       });
     }
     
-    // Check if they're already friends
-    if (sender.friends && sender.friends.includes(recipient._id)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'You are already friends with this user' 
-      });
-    }
-    
-    // Check if a request already exists
+    // Check if request already exists
     const existingRequest = await FriendRequest.findOne({
-      $or: [
-        { sender: sender._id, recipient: recipient._id, status: 'pending' },
-        { sender: recipient._id, recipient: sender._id, status: 'pending' }
-      ]
+      sender: sender._id,
+      recipient: recipient._id,
+      status: { $in: ['pending', 'accepted'] }
     });
     
     if (existingRequest) {
       return res.status(400).json({ 
         success: false, 
-        error: 'A friend request already exists between these users' 
+        error: 'Friend request already sent or users are already friends' 
       });
     }
     
     // Create new friend request
-    const newRequest = new FriendRequest({
+    const friendRequest = new FriendRequest({
       sender: sender._id,
       recipient: recipient._id,
       status: 'pending',
       createdAt: new Date()
     });
     
-    await newRequest.save();
+    await friendRequest.save();
     
     res.status(201).json({ 
       success: true, 
@@ -111,7 +109,7 @@ router.get('/friend-requests', async (req, res) => {
       });
     }
     
-    // Find the user
+    // Find user
     const user = await User.findOne({ email });
     
     if (!user) {
@@ -121,7 +119,7 @@ router.get('/friend-requests', async (req, res) => {
       });
     }
     
-    // Find pending requests where user is the recipient
+    // Find pending friend requests
     const requests = await FriendRequest.find({
       recipient: user._id,
       status: 'pending'
@@ -129,15 +127,27 @@ router.get('/friend-requests', async (req, res) => {
     
     // Format the requests with time ago
     const formattedRequests = requests.map(request => {
-      const timeAgo = getTimeAgo(request.createdAt);
+      const createdAt = new Date(request.createdAt);
+      const now = new Date();
+      const diffMs = now - createdAt;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+      
+      let timeAgo;
+      if (diffDays > 0) {
+        timeAgo = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      } else if (diffHours > 0) {
+        timeAgo = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      } else if (diffMins > 0) {
+        timeAgo = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      } else {
+        timeAgo = 'Just now';
+      }
       
       return {
         _id: request._id,
-        sender: {
-          _id: request.sender._id,
-          fullName: request.sender.fullName,
-          email: request.sender.email
-        },
+        sender: request.sender,
         status: request.status,
         createdAt: request.createdAt,
         timeAgo
@@ -230,32 +240,5 @@ router.post('/friend-request-response', async (req, res) => {
     });
   }
 });
-
-// Helper function to format time ago
-function getTimeAgo(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
-  
-  let interval = Math.floor(seconds / 31536000);
-  if (interval > 1) return interval + ' years ago';
-  if (interval === 1) return '1 year ago';
-  
-  interval = Math.floor(seconds / 2592000);
-  if (interval > 1) return interval + ' months ago';
-  if (interval === 1) return '1 month ago';
-  
-  interval = Math.floor(seconds / 86400);
-  if (interval > 1) return interval + ' days ago';
-  if (interval === 1) return '1 day ago';
-  
-  interval = Math.floor(seconds / 3600);
-  if (interval > 1) return interval + ' hours ago';
-  if (interval === 1) return '1 hour ago';
-  
-  interval = Math.floor(seconds / 60);
-  if (interval > 1) return interval + ' minutes ago';
-  if (interval === 1) return '1 minute ago';
-  
-  return 'just now';
-}
 
 module.exports = router; 
