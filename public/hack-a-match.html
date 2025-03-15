@@ -692,19 +692,19 @@
         });
 
         // Update the beginning of loadNearbyUsers function
-            async function loadNearbyUsers() {
+        async function loadNearbyUsers() {
             console.log('loadNearbyUsers called'); // Debug log
             const locationStatus = document.getElementById('locationStatus');
             const membersList = document.getElementById('communityMembersList');
             
-                try {
+            try {
                 // Get current user
-                    const userString = localStorage.getItem('user');
-                    if (!userString) {
-                        throw new Error('User not logged in');
-                    }
-                    const currentUser = JSON.parse(userString);
-                    
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    throw new Error('User not logged in');
+                }
+                const currentUser = JSON.parse(userString);
+                
                 // Update UI to loading state
                 locationStatus.innerHTML = `
                     <div class="location-status loading">
@@ -718,12 +718,12 @@
                     throw new Error('Geolocation is not supported by your browser');
                 }
 
-                // Explicitly request location with a simpler call first
+                // Request location with proper error handling
                 navigator.geolocation.getCurrentPosition(
                     async function(position) {
                         try {
                             console.log('Location permission granted'); // Debug log
-                    const { latitude, longitude } = position.coords;
+                            const { latitude, longitude } = position.coords;
                             
                             // Update location status
                             locationStatus.innerHTML = `
@@ -733,34 +733,36 @@
                                 </div>
                             `;
 
-                            // Update user's location on server
-                            const locationUpdate = await fetch('http://localhost:5000/api/users/location-by-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: currentUser.email,
-                            latitude,
-                            longitude
-                        })
-                    });
-                    
-                            if (!locationUpdate.ok) {
-                                throw new Error('Failed to update location');
+                            // Step 1: Update user's location in database
+                            const locationUpdateResponse = await fetch('http://localhost:5000/api/users/update-location', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    email: currentUser.email,
+                                    latitude,
+                                    longitude
+                                })
+                            });
+                            
+                            if (!locationUpdateResponse.ok) {
+                                const errorData = await locationUpdateResponse.json();
+                                throw new Error(errorData.message || 'Failed to update location');
                             }
                             
-                            // Fetch nearby users
-                    const response = await fetch(
-                        `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
-                    );
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch nearby users');
-                    }
-                    
-                    const results = await response.json();
-                    
+                            // Step 2: Fetch nearby users based on updated location
+                            const nearbyUsersResponse = await fetch(
+                                `http://localhost:5000/api/users/nearby?email=${encodeURIComponent(currentUser.email)}`
+                            );
+                            
+                            if (!nearbyUsersResponse.ok) {
+                                const errorData = await nearbyUsersResponse.json();
+                                throw new Error(errorData.message || 'Failed to fetch nearby users');
+                            }
+                            
+                            const results = await nearbyUsersResponse.json();
+                            
                             // Update UI with results
-                    if (!results.length || !results.some(range => range.users.length > 0)) {
+                            if (!results.length || !results.some(range => range.users.length > 0)) {
                                 membersList.innerHTML = `
                                     <div class="empty-state">
                                         <i class="fas fa-user-friends"></i>
@@ -768,40 +770,51 @@
                                         <p>Try expanding your search range or check back later!</p>
                                     </div>
                                 `;
-                        return;
-                    }
-                    
-                            // Display results by range
-                    let usersHTML = '';
-                    results.forEach(range => {
-                        if (range.users.length > 0) {
-                            usersHTML += `<div class="range-header">${range.range}km Range</div>`;
-                            usersHTML += range.users.map(user => {
-                                const initials = user.fullName
-                                    .split(' ')
-                                    .map(name => name[0])
-                                    .join('')
-                                    .toUpperCase();
                                 
-                                return `
-                                <div class="user-item" data-user-id="${user._id}">
-                                    <div class="user-avatar">${initials}</div>
-                                    <div class="user-info">
-                                        <div class="user-name">${user.fullName}</div>
-                                                    <div class="user-status">${user.distance.toFixed(1)}km away</div>
-                                    </div>
-                                    <div class="user-actions">
-                                                    <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
-                                            <i class="fas fa-user-plus"></i>
+                                // Update status to success but no users found
+                                locationStatus.innerHTML = `
+                                    <div>
+                                        <i class="fas fa-check-circle"></i> 
+                                        Location enabled - no nearby coders found
+                                        <button onclick="loadNearbyUsers()" class="refresh-btn">
+                                            <i class="fas fa-sync-alt"></i>
                                         </button>
                                     </div>
-                                </div>
                                 `;
-                            }).join('');
-                        }
-                    });
-                    
-                    membersList.innerHTML = usersHTML;
+                                return;
+                            }
+                            
+                            // Display results by range
+                            let usersHTML = '';
+                            results.forEach(range => {
+                                if (range.users.length > 0) {
+                                    usersHTML += `<div class="range-header">${range.range}km Range</div>`;
+                                    usersHTML += range.users.map(user => {
+                                        const initials = user.fullName
+                                            .split(' ')
+                                            .map(name => name[0])
+                                            .join('')
+                                            .toUpperCase();
+                                        
+                                        return `
+                                        <div class="user-item" data-user-id="${user._id}">
+                                            <div class="user-avatar">${initials}</div>
+                                            <div class="user-info">
+                                                <div class="user-name">${user.fullName}</div>
+                                                <div class="user-status">${user.distance.toFixed(1)}km away</div>
+                                            </div>
+                                            <div class="user-actions">
+                                                <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        `;
+                                    }).join('');
+                                }
+                            });
+                            
+                            membersList.innerHTML = usersHTML;
                             
                             // Update status to success
                             locationStatus.innerHTML = `
@@ -810,7 +823,7 @@
                                     Location enabled - showing nearby coders
                                     <button onclick="loadNearbyUsers()" class="refresh-btn">
                                         <i class="fas fa-sync-alt"></i>
-                            </button>
+                                    </button>
                                 </div>
                             `;
                             
