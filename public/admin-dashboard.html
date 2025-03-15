@@ -639,6 +639,12 @@
             
             // Admin login function
             function adminLogin(email, password) {
+                // Hide any previous error messages
+                authError.classList.add('d-none');
+                
+                // Log the request for debugging
+                console.log('Sending login request with:', { email });
+                
                 fetch('/api/admin/login', {
                     method: 'POST',
                     headers: {
@@ -648,23 +654,25 @@
                     credentials: 'include'
                 })
                 .then(response => {
+                    console.log('Login response status:', response.status);
                     if (!response.ok) {
-                        throw new Error('Invalid admin credentials');
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Invalid admin credentials');
+                        });
                     }
                     return response.json();
                 })
                 .then(data => {
+                    console.log('Login successful:', data);
                     // Successfully logged in, show admin dashboard
                     authSection.classList.add('d-none');
                     adminDashboard.classList.remove('d-none');
                     
-                    // Update admin info
-                    updateAdminInfo(data.admin);
-                    
-                    // Fetch dashboard data
-                    fetchDashboardData();
+                    // Fetch users data
+                    fetchUsers();
                 })
                 .catch(error => {
+                    console.error('Login error:', error);
                     // Show error message
                     authError.textContent = error.message;
                     authError.classList.remove('d-none');

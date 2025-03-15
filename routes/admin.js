@@ -24,12 +24,15 @@ async function getAllUsers() {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Admin login attempt:', email);
     
     // Check if user exists and has admin role
     const user = await getUserByEmail(email);
+    console.log('User found:', user ? user.email : 'No user');
     
     // Check for either role='admin' OR isAdmin=true to handle both
     if (!user || (user.role !== 'admin' && !user.isAdmin) || !(await comparePasswords(password, user.password))) {
+      console.log('Invalid credentials or not admin');
       return res.status(401).json({ error: 'Invalid admin credentials' });
     }
     
@@ -37,7 +40,14 @@ router.post('/login', async (req, res) => {
     req.session.userId = user._id;
     req.session.isAdmin = true;
     
-    res.status(200).json({ message: 'Admin login successful' });
+    console.log('Admin login successful for:', user.email);
+    res.status(200).json({ 
+      message: 'Admin login successful',
+      admin: {
+        fullName: user.fullName,
+        email: user.email
+      }
+    });
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({ error: 'Server error during admin login' });
