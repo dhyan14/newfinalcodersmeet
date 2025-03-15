@@ -6,6 +6,7 @@
     <title>Hack a Match | CodersMEET</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
     <style>
         .hack-container {
             display: grid;
@@ -634,117 +635,133 @@
             // Rest of your DOMContentLoaded code...
         });
 
-        // Update the beginning of loadNearbyUsers function
-            async function loadNearbyUsers() {
-            console.log('loadNearbyUsers called'); // Debug log
+        // Load nearby users based on location
+        async function loadNearbyUsers() {
             const locationStatus = document.getElementById('locationStatus');
             const membersList = document.getElementById('communityMembersList');
             
-                try {
-                // Get current user
-                    const userString = localStorage.getItem('user');
-                    if (!userString) {
-                        throw new Error('User not logged in');
-                    }
-                    const currentUser = JSON.parse(userString);
-                    
-                // Update UI to loading state
-                locationStatus.innerHTML = `
-                    <div class="location-status loading">
-                        <i class="fas fa-spinner"></i> 
-                        Requesting location access...
-                    </div>
-                `;
-
-                // Check if geolocation is supported
-                if (!navigator.geolocation) {
-                    throw new Error('Geolocation is not supported by your browser');
+            console.log('loadNearbyUsers called');
+            
+            // Show loading state
+            locationStatus.innerHTML = `
+                <div class="location-status loading">
+                    <i class="fas fa-spinner fa-spin"></i> 
+                    Finding nearby coders...
+                </div>
+            `;
+            
+            try {
+                // Check if user is logged in
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    throw new Error('You must be logged in to use this feature');
                 }
-
-                // Explicitly request location with a simpler call first
+                
+                const currentUser = JSON.parse(userString);
+                
+                console.log('Location permission granted');
+                
+                // Get user's current location
                 navigator.geolocation.getCurrentPosition(
                     async function(position) {
                         try {
-                            console.log('Location permission granted'); // Debug log
-                    const { latitude, longitude } = position.coords;
+                            const latitude = position.coords.latitude;
+                            const longitude = position.coords.longitude;
                             
-                            // Update location status
-                            locationStatus.innerHTML = `
-                                <div class="location-status loading">
-                                    <i class="fas fa-spinner"></i> 
-                                    Location found! Searching for nearby coders...
-                                </div>
-                            `;
-
-                            // Update user's location on server
-                            const locationUpdate = await fetch('http://localhost:5000/api/users/location-by-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: currentUser.email,
-                            latitude,
-                            longitude
-                        })
-                    });
-                    
-                            if (!locationUpdate.ok) {
-                                throw new Error('Failed to update location');
+                            console.log(`User location: ${latitude}, ${longitude}`);
+                            
+                            // Get the API URL from config
+                            const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
+                            
+                            // Step 1: Update user's location in database
+                            const locationUpdateResponse = await fetch(`${API_BASE_URL}/users/update-location`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    email: currentUser.email,
+                                    latitude,
+                                    longitude
+                                })
+                            });
+                            
+                            if (!locationUpdateResponse.ok) {
+                                const errorData = await locationUpdateResponse.json();
+                                throw new Error(errorData.message || 'Failed to update location');
                             }
                             
-                            // Fetch nearby users
-                    const response = await fetch(
-                        `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
-                    );
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch nearby users');
-                    }
-                    
-                    const results = await response.json();
-                    
-                            // Update UI with results
-                    if (!results.length || !results.some(range => range.users.length > 0)) {
+                            // Step 2: Fetch nearby users based on updated location
+                            const nearbyUsersResponse = await fetch(
+                                `${API_BASE_URL}/users/nearby?email=${encodeURIComponent(currentUser.email)}`
+                            );
+                            
+                            if (!nearbyUsersResponse.ok) {
+                                const errorData = await nearbyUsersResponse.json();
+                                throw new Error(errorData.message || 'Failed to fetch nearby users');
+                            }
+                            
+                            const results = await nearbyUsersResponse.json();
+                            
+                            // Check if any users were found
+                            let totalUsers = 0;
+                            results.forEach(range => {
+                                totalUsers += range.users.length;
+                            });
+                            
+                            if (totalUsers === 0) {
                                 membersList.innerHTML = `
                                     <div class="empty-state">
-                                        <i class="fas fa-user-friends"></i>
+                                        <i class="fas fa-user-slash"></i>
                                         <p>No nearby coders found yet.</p>
                                         <p>Try expanding your search range or check back later!</p>
                                     </div>
                                 `;
-                        return;
-                    }
-                    
-                            // Display results by range
-                    let usersHTML = '';
-                    results.forEach(range => {
-                        if (range.users.length > 0) {
-                            usersHTML += `<div class="range-header">${range.range}km Range</div>`;
-                            usersHTML += range.users.map(user => {
-                                const initials = user.fullName
-                                    .split(' ')
-                                    .map(name => name[0])
-                                    .join('')
-                                    .toUpperCase();
                                 
-                                return `
-                                <div class="user-item" data-user-id="${user._id}">
-                                    <div class="user-avatar">${initials}</div>
-                                    <div class="user-info">
-                                        <div class="user-name">${user.fullName}</div>
-                                                    <div class="user-status">${user.distance.toFixed(1)}km away</div>
-                                    </div>
-                                    <div class="user-actions">
-                                                    <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
-                                            <i class="fas fa-user-plus"></i>
+                                // Update status to show location is enabled but no users found
+                                locationStatus.innerHTML = `
+                                    <div>
+                                        <i class="fas fa-check-circle"></i> 
+                                        Location enabled - no nearby coders found
+                                        <button onclick="loadNearbyUsers()" class="refresh-btn">
+                                            <i class="fas fa-sync-alt"></i>
                                         </button>
                                     </div>
-                                </div>
                                 `;
-                            }).join('');
-                        }
-                    });
-                    
-                    membersList.innerHTML = usersHTML;
+                                return;
+                            }
+                            
+                            // Display results by range
+                            let usersHTML = '';
+                            results.forEach(range => {
+                                if (range.users.length > 0) {
+                                    usersHTML += `<div class="range-header">${range.range}km Range</div>`;
+                                    usersHTML += range.users.map(user => {
+                                        const initials = user.fullName
+                                            .split(' ')
+                                            .map(name => name[0])
+                                            .join('')
+                                            .toUpperCase();
+                                        
+                                        return `
+                                        <div class="user-item" data-user-id="${user._id}">
+                                            <div class="user-avatar">${initials}</div>
+                                            <div class="user-info">
+                                                <div class="user-name">${user.fullName}</div>
+                                                <div class="user-status">${user.distance.toFixed(1)}km away</div>
+                                            </div>
+                                            <div class="user-actions">
+                                                <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        `;
+                                    }).join('');
+                                }
+                            });
+                            
+                            membersList.innerHTML = usersHTML;
                             
                             // Update status to success
                             locationStatus.innerHTML = `
@@ -753,7 +770,7 @@
                                     Location enabled - showing nearby coders
                                     <button onclick="loadNearbyUsers()" class="refresh-btn">
                                         <i class="fas fa-sync-alt"></i>
-                            </button>
+                                    </button>
                                 </div>
                             `;
                             
@@ -763,7 +780,7 @@
                         }
                     },
                     function(error) {
-                        console.error('Geolocation error:', error); // Debug log
+                        console.error('Geolocation error:', error);
                         switch(error.code) {
                             case error.PERMISSION_DENIED:
                                 handleLocationError(new Error('Location permission denied'));
@@ -784,9 +801,8 @@
                         maximumAge: 0
                     }
                 );
-
             } catch (error) {
-                console.error('Error in loadNearbyUsers:', error); // Debug log
+                console.error('Error in loadNearbyUsers:', error);
                 handleLocationError(error);
             }
         }
@@ -871,7 +887,10 @@
                     return;
                 }
                 
-                const response = await fetch(`http://localhost:5000/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
+                // Get the API URL from config
+                const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
+                
+                const response = await fetch(`${API_BASE_URL}/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
                 if (!response.ok) {
                     throw new Error('Failed to load friend requests');
                 }
@@ -933,7 +952,10 @@
         // Handle accept/reject actions
         async function respondToRequest(requestId, action) {
             try {
-                const response = await fetch('http://localhost:5000/api/friend-request-response', {
+                // Get the API URL from config
+                const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
+                
+                const response = await fetch(`${API_BASE_URL}/friend-request-response`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -943,43 +965,36 @@
                 });
                 
                 if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.error || 'Failed to process request');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to process request');
                 }
                 
                 // Remove the request from the UI
-                const requestElement = document.querySelector(`.friend-request-item[data-request-id="${requestId}"]`);
+                const requestElement = document.querySelector(`[data-request-id="${requestId}"]`);
                 if (requestElement) {
-                    requestElement.style.height = requestElement.offsetHeight + 'px';
-                    requestElement.style.overflow = 'hidden';
-                    requestElement.style.opacity = '0';
-                    requestElement.style.transition = 'all 0.3s ease';
-                    
-                    setTimeout(() => {
-                        requestElement.style.height = '0';
-                        setTimeout(() => {
-                            requestElement.remove();
-                            
-                            // Update the count
-                            const requestCount = document.getElementById('requestCount');
-                            const currentCount = parseInt(requestCount.textContent);
-                            requestCount.textContent = currentCount - 1;
-                            
-                            // Check if there are no more requests
-                            if (currentCount - 1 === 0) {
-                                document.getElementById('friendRequestsContainer').innerHTML = `
-                                    <div class="empty-requests">
-                                        <p>No pending friend requests</p>
-                                    </div>
-                                `;
-                            }
-                        }, 300);
-                    }, 10);
+                    requestElement.remove();
                 }
+                
+                // Update the count
+                const requestCount = document.getElementById('requestCount');
+                const currentCount = parseInt(requestCount.textContent);
+                requestCount.textContent = currentCount - 1;
+                
+                // If no more requests, show empty state
+                if (currentCount - 1 === 0) {
+                    document.getElementById('friendRequestsContainer').innerHTML = `
+                        <div class="empty-requests">
+                            <p>No pending friend requests</p>
+                        </div>
+                    `;
+                }
+                
+                // Show success message
+                alert(`Friend request ${action === 'accept' ? 'accepted' : 'rejected'} successfully!`);
                 
             } catch (error) {
                 console.error(`Error ${action}ing friend request:`, error);
-                alert(error.message);
+                alert(`Failed to ${action} friend request: ${error.message}`);
             }
         }
 
@@ -1049,6 +1064,44 @@
                 return 'IE';
             } else {
                 return 'Unknown';
+            }
+        }
+
+        // Add friend function
+        async function addFriend(recipientEmail) {
+            try {
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    alert('You must be logged in to add friends');
+                    return;
+                }
+                
+                const currentUser = JSON.parse(userString);
+                
+                // Get the API URL from config
+                const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
+                
+                const response = await fetch(`${API_BASE_URL}/send-friend-request`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderEmail: currentUser.email,
+                        recipientEmail: recipientEmail
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to send friend request');
+                }
+                
+                // Show success message
+                alert('Friend request sent successfully!');
+                
+            } catch (error) {
+                console.error('Error sending friend request:', error);
+                alert(`Failed to send friend request: ${error.message}`);
             }
         }
     </script>
