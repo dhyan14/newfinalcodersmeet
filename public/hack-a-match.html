@@ -1094,10 +1094,24 @@
             }
         }
 
-        // Test the API connection first
+        // Add this function to handle API errors
+        function handleApiError(error, element) {
+            console.error('API error:', error);
+            element.innerHTML = `
+                <div class="error-message">
+                    <h4>API Error</h4>
+                    <p>${error.message}</p>
+                    <p>Please try again later or contact support.</p>
+                </div>
+            `;
+        }
+
+        // Update the testApiConnection function
         async function testApiConnection() {
             try {
                 const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
+                
+                console.log('Testing API connection to:', API_BASE_URL);
                 
                 const response = await fetch(`${API_BASE_URL}/test`);
                 const data = await response.json();
