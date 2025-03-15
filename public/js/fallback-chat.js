@@ -395,13 +395,24 @@
       const container = document.getElementById('chat-messages');
       if (!container) return;
 
+      // Sort messages by timestamp
+      messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      // Only keep the latest 50 messages to avoid performance issues
+      if (messages.length > 50) {
+        messages = messages.slice(messages.length - 50);
+      }
+
       container.innerHTML = messages.map(msg => `
         <div class="message ${msg.sender === this.currentUser ? 'sent' : 'received'}">
-          <div class="message-sender">${msg.sender}</div>
-          <div class="message-content">${msg.content}</div>
+          ${msg.sender !== this.currentUser ? `<div class="message-sender">${msg.sender}</div>` : ''}
+          <div class="message-content">${msg.content || msg.message}</div>
           <div class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</div>
         </div>
       `).join('');
+      
+      // Scroll to bottom
+      container.scrollTop = container.scrollHeight;
     },
 
     sendMessage: function() {
@@ -465,6 +476,15 @@
       
       container.appendChild(messageEl);
       container.scrollTop = container.scrollHeight;
+    },
+
+    // Add a method to clear localStorage messages when needed
+    clearMessages: function() {
+      if (confirm('Are you sure you want to clear all chat messages? This cannot be undone.')) {
+        localStorage.removeItem(`chat_messages_${this.squadId}`);
+        const container = document.getElementById('chat-messages');
+        if (container) container.innerHTML = '';
+      }
     },
 
     // Add more methods as needed

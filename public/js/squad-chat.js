@@ -82,17 +82,23 @@ class SquadChat {
   // Initialize Socket.IO connection
   initializeSocket() {
     try {
-      // Use a real WebSocket server URL or fall back to the current domain
-      const wsServerUrl = window.location.hostname === 'localhost' 
-        ? 'http://localhost:3001'  // Local development
-        : window.location.origin;  // Production (current domain)
-        
-      this.socket = io(wsServerUrl, {
+      // Check if we're on Vercel and skip Socket.IO entirely
+      if (window.location.hostname.includes('vercel.app') || 
+          window.location.hostname === 'www.dhyanjain.me') {
+        console.log('Detected Vercel deployment - using localStorage chat system');
+        this.updateStatus('Using offline mode (localStorage)', 'warning');
+        window.FallbackChat.setLocalStorage(true);
+        window.FallbackChat.startPolling();
+        return;
+      }
+      
+      // Only try Socket.IO on non-Vercel environments
+      this.socket = io(window.location.origin, {
         path: '/socket.io/',
-        transports: ['polling', 'websocket'], // Try polling first in production
+        transports: ['polling'],
         reconnection: true,
-        reconnectionAttempts: 3,
-        timeout: 10000
+        reconnectionAttempts: 2,  // Reduce to prevent console spam
+        timeout: 5000
       });
 
       // Socket event handlers
@@ -130,8 +136,7 @@ class SquadChat {
       });
     } catch (error) {
       console.error('Socket initialization error:', error);
-      this.updateStatus('Chat initialization failed', 'error');
-      // Switch to fallback mode
+      this.updateStatus('Using offline mode', 'warning');
       window.FallbackChat.setLocalStorage(true);
       window.FallbackChat.startPolling();
     }
