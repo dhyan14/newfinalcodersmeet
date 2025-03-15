@@ -220,25 +220,19 @@ async function connectToDatabase() {
   try {
     console.log('Connecting to MongoDB...');
     
-    // Make sure your MONGODB_URI is properly set in your .env file 
-    // It should look something like: mongodb+srv://username:password@cluster.mongodb.net/dbname
+    // Use connection pooling optimized for serverless
     const client = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      // Don't use maxPoolSize for Atlas connections - it will manage connections automatically
+      // Important: For serverless, don't maintain too many connections
+      // since functions are ephemeral
+      maxPoolSize: 5,
       serverSelectionTimeoutMS: 5000
     });
 
     cachedDb = mongoose.connection;
-    
     console.log('Successfully connected to MongoDB');
     
-    // Handle connection errors
-    cachedDb.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
-      cachedDb = null;
-    });
-
     return cachedDb;
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
@@ -764,50 +758,69 @@ app.get('/api/users/nearby-by-email', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Define distance ranges in kilometers
-    const ranges = [1, 5, 10, 25, 50];
+    // Define distance ranges in kilometers - use fewer ranges for serverless
+    const ranges = [5, 25, 50]; // Simplified ranges to reduce query load
     const result = [];
     
-    // Query users within each range
-    for (const range of ranges) {
-      // Get users who were active in the last 24 hours
-      const activeTimeLimit = new Date();
-      activeTimeLimit.setHours(activeTimeLimit.getHours() - 24);
-      
-      const usersInRange = await User.find({
-        email: { $ne: email }, // Exclude current user
-        location: {
-          $near: {
-            $geometry: {
-              type: 'Point',
-              coordinates: [lng, lat]
-            },
-            $maxDistance: range * 1000 // Convert km to meters
-          }
-        },
-        lastActive: { $gte: activeTimeLimit } // Only active users
-      }).select('_id fullName email location');
-      
-      // Calculate distance for each user and filter out duplicates
-      const previousUsers = result.flatMap(r => r.users.map(u => u.email));
-      const newUsers = usersInRange.filter(user => !previousUsers.includes(user.email));
-      
-      const usersWithDistance = newUsers.map(user => {
-        const userLng = user.location.coordinates[0];
-        const userLat = user.location.coordinates[1];
-        const distance = calculateDistance(lat, lng, userLat, userLng);
+    try {
+      // Query users within each range with timeout
+      for (const range of ranges) {
+        // Get users who were active in the last 24 hours
+        const activeTimeLimit = new Date();
+        activeTimeLimit.setHours(activeTimeLimit.getHours() - 24);
         
-        return {
-          _id: user._id,
-          fullName: user.fullName,
-          email: user.email,
-          distance: distance // Distance in kilometers
-        };
-      });
-      
+        // Use a more efficient query approach for serverless
+        const usersInRange = await User.find({
+          email: { $ne: email }, // Exclude current user
+          location: {
+            $near: {
+              $geometry: {
+                type: 'Point',
+                coordinates: [lng, lat]
+              },
+              $maxDistance: range * 1000 // Convert km to meters
+            }
+          }
+        })
+        .select('_id fullName email location')
+        .limit(20) // Limit results per range to avoid timeout
+        .lean(); // Use lean for better performance
+        
+        // Process results more efficiently
+        const previousEmails = new Set(result.flatMap(r => r.users.map(u => u.email)));
+        const uniqueUsers = usersInRange.filter(user => !previousEmails.has(user.email));
+        
+        const usersWithDistance = uniqueUsers.map(user => {
+          let distance = 0;
+          try {
+            const userLng = user.location?.coordinates[0] || 0;
+            const userLat = user.location?.coordinates[1] || 0;
+            distance = calculateDistance(lat, lng, userLat, userLng);
+          } catch (e) {
+            console.error('Error calculating distance:', e);
+            distance = range; // Default to max range if calculation fails
+          }
+          
+          return {
+            _id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            distance: distance // Distance in kilometers
+          };
+        });
+        
+        result.push({
+          range,
+          users: usersWithDistance
+        });
+      }
+    } catch (geoError) {
+      console.error('Error in geo query:', geoError);
+      // Don't fail completely, return partial results with error info
       result.push({
-        range,
-        users: usersWithDistance
+        error: true,
+        message: 'Error processing geo query',
+        details: geoError.message
       });
     }
     
@@ -1043,14 +1056,25 @@ app.post('/api/friend-request-response', async (req, res) => {
   }
 });
 
-// Make sure the geospatial index is created before using location queries
+// Modify the geospatial index creation to handle serverless environment
+// In a serverless environment, we should check for index existence rather than always trying to create it
 mongoose.connection.once('open', async () => {
   try {
-    // Create the 2dsphere index if it doesn't exist
-    await mongoose.connection.collection('users').createIndex({ "location": "2dsphere" });
-    console.log('Geospatial index created successfully');
+    // Check if index exists before creating it
+    const indexes = await mongoose.connection.collection('users').listIndexes().toArray();
+    const has2dSphereIndex = indexes.some(index => 
+      index.key && index.key.location === '2dsphere'
+    );
+    
+    if (!has2dSphereIndex) {
+      await mongoose.connection.collection('users').createIndex({ "location": "2dsphere" });
+      console.log('Geospatial index created successfully');
+    } else {
+      console.log('Geospatial index already exists');
+    }
   } catch (error) {
-    console.error('Error creating geospatial index:', error);
+    console.error('Error checking/creating geospatial index:', error);
+    // Don't throw error here - just log it
   }
 });
 

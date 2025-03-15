@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.js",
+      "src": "server.js",
       "use": "@vercel/node"
     },
     {
@@ -13,11 +13,11 @@
   "routes": [
     {
       "src": "/socket.io/(.*)",
-      "dest": "/index.js"
+      "dest": "/server.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/index.js"
+      "dest": "/server.js"
     },
     {
       "src": "/(.*\\.(js|css|png|jpg|gif|svg|ico))",
@@ -25,10 +25,16 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.js"
+      "dest": "/server.js"
     }
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "server.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
   }
 } 
