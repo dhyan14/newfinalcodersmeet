@@ -46,7 +46,13 @@
         }
         
         const response = await fetch(`${API_URL}${endpoint}`, options);
-        const responseData = await response.json();
+        let responseData;
+        
+        try {
+          responseData = await response.json();
+        } catch (jsonError) {
+          responseData = { error: 'Failed to parse JSON response' };
+        }
         
         resultsEl.textContent = JSON.stringify({
           status: response.status,

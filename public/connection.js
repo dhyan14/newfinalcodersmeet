@@ -47,9 +47,16 @@
         // API request helper
         request: async function(endpoint, method = 'GET', data = null) {
             try {
+                // Make sure endpoint starts with a slash
+                if (!endpoint.startsWith('/')) {
+                    endpoint = '/' + endpoint;
+                }
+                
                 const url = `${this.baseURL}${endpoint}`;
+                console.log(`Making ${method} request to: ${url}`);
+                
                 const options = {
-                    method,
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json'
                     }
@@ -69,13 +76,13 @@
                 return responseData;
             } catch (error) {
                 console.error(`API error (${endpoint}):`, error);
-                throw new Error(error.message || 'Request failed');
+                throw error; // Re-throw the error for the caller to handle
             }
         },
         
         // Login method
         login: async function(email, password) {
-            return this.request('/login', 'POST', { email, password });
+            return this.request(this.endpoints.login, 'POST', { email, password });
         },
         
         // Show connection error message
