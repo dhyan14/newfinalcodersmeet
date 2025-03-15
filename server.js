@@ -15,8 +15,8 @@ const app = express();
 // Update CORS configuration
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production' 
-        ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app']
-        : ['http://localhost:5000', 'http://localhost:3000'],
+        ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app', 'https://your-frontend-domain.vercel.app']
+        : ['http://localhost:3001', 'http://localhost:3000'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     optionsSuccessStatus: 204,
@@ -232,7 +232,10 @@ app.get('/api/users/:id', async (req, res) => {
 // Update user location with debugging
 app.post('/api/users/location-by-email', async (req, res) => {
     try {
+        console.log('[Vercel] Location update request received');
         await connectToDatabase();
+        console.log('[Vercel] Database connected');
+        
         const { email, latitude, longitude } = req.body;
         
         console.log('Updating location for:', { email, latitude, longitude }); // Debug log
@@ -261,9 +264,10 @@ app.post('/api/users/location-by-email', async (req, res) => {
         console.log('Location updated for user:', user._id); // Debug log
         console.log('Updated location:', user.location); // Debug log
         
+        console.log('[Vercel] Location updated successfully');
         res.json({ success: true, message: 'Location updated successfully' });
     } catch (error) {
-        console.error('Error updating location:', error);
+        console.error('[Vercel] Error updating location:', error);
         res.status(500).json({ error: 'Failed to update location', details: error.message });
     }
 });
@@ -586,6 +590,16 @@ app.use((req, res) => {
         message: 'Not Found',
         path: req.path
     });
+});
+
+// Add this near the top of your routes
+app.get('/api/debug', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API is working',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Just keep the export
