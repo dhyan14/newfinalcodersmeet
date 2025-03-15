@@ -59,15 +59,33 @@ router.post('/login', async (req, res) => {
 });
 
 // Check if user is authenticated as admin
-router.get('/check-auth', isAdmin, async (req, res) => {
-  try {
-    // Get admin user data to return
-    const admin = await User.findById(req.session.userId, '-password');
-    res.status(200).json({ isAdmin: true, admin });
-  } catch (error) {
-    console.error('Error fetching admin data:', error);
-    res.status(200).json({ isAdmin: true }); // Still return isAdmin true even if user fetch fails
+router.get('/check-auth', (req, res) => {
+  // First check if user is logged in
+  if (!req.session || !req.session.userId || !req.session.isAdmin) {
+    console.log('User is not authenticated as admin');
+    return res.status(401).json({ isAdmin: false, error: 'Not authenticated as admin' });
   }
+
+  console.log('User is authenticated as admin, fetching user data...');
+  
+  // Get admin user data
+  User.findById(req.session.userId, '-password')
+    .then(user => {
+      if (!user) {
+        console.log('Admin user not found in database');
+        // Session exists but user not found - clear session
+        req.session.destroy();
+        return res.status(401).json({ isAdmin: false, error: 'Admin user not found' });
+      }
+      
+      console.log('Admin user data retrieved:', user.email);
+      res.status(200).json({ isAdmin: true, admin: user });
+    })
+    .catch(err => {
+      console.error('Error fetching admin data:', err);
+      // Still return success but without user data
+      res.status(200).json({ isAdmin: true });
+    });
 });
 
 // Admin logout
