@@ -388,17 +388,30 @@
                     serverStatus.style.color = 'red';
                 }
             }
+            
+            // Move username check initialization here
+            let isUsernameAvailable = false;
+            
+            const usernameInput = document.getElementById('username');
+            const checkButton = document.getElementById('checkUsernameBtn');
+            const availabilityDiv = document.getElementById('usernameAvailability');
+            const signupForm = document.getElementById('signupForm');
+            
+            // Add event listeners after DOM is loaded
+            checkButton.addEventListener('click', checkUsernameAvailability);
+            
+            usernameInput.addEventListener('input', function() {
+                isUsernameAvailable = false;
+                availabilityDiv.innerHTML = '';
+            });
+            
+            signupForm.addEventListener('submit', handleSignup);
         });
         
-        let isUsernameAvailable = false;
-        
-        const usernameInput = document.getElementById('username');
-        const checkButton = document.getElementById('checkUsernameBtn');
-        const availabilityDiv = document.getElementById('usernameAvailability');
-        const signupForm = document.getElementById('signupForm');
-        
         async function checkUsernameAvailability() {
-            const username = usernameInput.value.trim();
+            const username = document.getElementById('username').value.trim();
+            const availabilityDiv = document.getElementById('usernameAvailability');
+            const checkButton = document.getElementById('checkUsernameBtn');
             
             if (!username) {
                 availabilityDiv.innerHTML = '<span style="color: red;">Please enter a username</span>';
@@ -417,10 +430,10 @@
                 
                 if (data.available) {
                     availabilityDiv.innerHTML = '<span style="color: green;">✓ Username is available!</span>';
-                    isUsernameAvailable = true;
+                    window.isUsernameAvailable = true; // Make it a window property so it's accessible in handleSignup
                 } else {
                     availabilityDiv.innerHTML = '<span style="color: red;">✗ Username is already taken</span>';
-                    isUsernameAvailable = false;
+                    window.isUsernameAvailable = false;
                 }
             } catch (error) {
                 console.error('Error checking username:', error);
@@ -434,13 +447,13 @@
         async function handleSignup(event) {
             event.preventDefault();
             
-            if (!isUsernameAvailable) {
+            if (!window.isUsernameAvailable) {
                 alert('Please check username availability first');
                 return;
             }
 
             const fullName = document.getElementById('fullName').value.trim();
-            const username = usernameInput.value.trim();
+            const username = document.getElementById('username').value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
@@ -483,15 +496,6 @@
                 signupBtn.disabled = false;
             }
         }
-
-        checkButton.addEventListener('click', checkUsernameAvailability);
-        
-        usernameInput.addEventListener('input', function() {
-            isUsernameAvailable = false;
-            availabilityDiv.innerHTML = '';
-        });
-        
-        signupForm.addEventListener('submit', handleSignup);
         
         function hamburg() {
             document.querySelector('.dropdown').style.display = 'block';
