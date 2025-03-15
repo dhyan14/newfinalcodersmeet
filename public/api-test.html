@@ -17,6 +17,7 @@
     input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
     textarea { height: 100px; }
   </style>
+  <script src="config.js"></script>
 </head>
 <body>
   <div class="container">
@@ -55,6 +56,10 @@
       <button onclick="testServerInfo()">Get Server Info</button>
       <div id="serverInfoResult"></div>
     </div>
+
+    <button id="testHealth">Test Health Endpoint</button>
+    <button id="testUsers">Test Users Endpoint</button>
+    <div id="results" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
   </div>
 
   <script>
@@ -150,6 +155,32 @@
           `;
         });
     }
+
+    document.getElementById('testHealth').addEventListener('click', async () => {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = 'Testing health endpoint...';
+      
+      try {
+        const response = await fetch(`${window.APP_CONFIG.API_URL}/api/health`);
+        const data = await response.json();
+        resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (error) {
+        resultsDiv.innerHTML = `Error: ${error.message}`;
+      }
+    });
+
+    document.getElementById('testUsers').addEventListener('click', async () => {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = 'Testing users endpoint...';
+      
+      try {
+        const response = await fetch(`${window.APP_CONFIG.API_URL}/api/users/test`);
+        const data = await response.json();
+        resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (error) {
+        resultsDiv.innerHTML = `Error: ${error.message}`;
+      }
+    });
   </script>
 </body>
 </html> 

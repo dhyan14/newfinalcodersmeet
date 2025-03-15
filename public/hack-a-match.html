@@ -630,7 +630,7 @@
                 
                 const currentUser = JSON.parse(userString);
                 
-                const response = await fetch(`${API_BASE_URL}/api/send-friend-request`, {
+                const response = await fetch(`${API_BASE_URL}/send-friend-request`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

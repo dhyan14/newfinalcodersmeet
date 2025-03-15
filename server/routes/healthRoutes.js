@@ -10,9 +10,13 @@ router.get('/health', (req, res) => {
     });
 });
 
-// Add this additional endpoint to match what the client is looking for
+// Root health endpoint
 router.get('/', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'API is running' });
+  res.status(200).json({ 
+    status: 'ok',
+    message: 'API is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Add a test endpoint
