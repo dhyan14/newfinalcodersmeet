@@ -10,6 +10,10 @@ const Message = require('./models/Message');
 const FriendRequest = require('./models/FriendRequest');
 const SquadChat = require('./models/SquadChat');
 
+// Import routes
+const locationRoutes = require('./routes/locationRoutes');
+const friendRequestRoutes = require('./routes/friendRequestRoutes');
+
 const app = express();
 
 // Update CORS configuration
@@ -30,6 +34,10 @@ app.options('*', cors(corsOptions));
 // Other middleware
 app.use(express.json());
 app.use(express.static('public'));
+
+// Register API routes
+app.use('/api', locationRoutes);
+app.use('/api', friendRequestRoutes);
 
 // Add better error logging
 app.use((req, res, next) => {
@@ -58,6 +66,9 @@ const connectToDatabase = async () => {
         throw error;
     }
 };
+
+// Connect to MongoDB at startup
+connectToDatabase().catch(console.error);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
