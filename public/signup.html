@@ -368,10 +368,14 @@
     </div>
     <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
     <script>
-        AOS.init();
-        
-        // Check server connection on page load
+        // Make sure AOS is initialized only after it's loaded
         document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize AOS only if it exists
+            if (typeof AOS !== 'undefined') {
+                AOS.init();
+            }
+            
+            // Check server connection on page load
             try {
                 const serverStatus = document.getElementById('server-status');
                 const isConnected = await window.AppConnection.checkHealth();
@@ -390,60 +394,59 @@
             }
             
             // Move username check initialization here
-            let isUsernameAvailable = false;
+            window.isUsernameAvailable = false;
             
             const usernameInput = document.getElementById('username');
             const checkButton = document.getElementById('checkUsernameBtn');
             const availabilityDiv = document.getElementById('usernameAvailability');
             const signupForm = document.getElementById('signupForm');
             
+            // Define checkUsernameAvailability inside the DOMContentLoaded to ensure button access
+            window.checkUsernameAvailability = async function() {
+                const username = usernameInput.value.trim();
+                
+                if (!username) {
+                    availabilityDiv.innerHTML = '<span style="color: red;">Please enter a username</span>';
+                    return;
+                }
+
+                try {
+                    checkButton.disabled = true;
+                    checkButton.innerHTML = 'Checking...';
+                    
+                    // Use AppConnection for API requests
+                    const data = await window.AppConnection.request('/api/check-username', {
+                        method: 'POST',
+                        body: JSON.stringify({ username })
+                    });
+                    
+                    if (data.available) {
+                        availabilityDiv.innerHTML = '<span style="color: green;">✓ Username is available!</span>';
+                        window.isUsernameAvailable = true;
+                    } else {
+                        availabilityDiv.innerHTML = '<span style="color: red;">✗ Username is already taken</span>';
+                        window.isUsernameAvailable = false;
+                    }
+                } catch (error) {
+                    console.error('Error checking username:', error);
+                    availabilityDiv.innerHTML = '<span style="color: red;">Error checking username</span>';
+                } finally {
+                    checkButton.disabled = false;
+                    checkButton.innerHTML = 'Check';
+                }
+            };
+            
             // Add event listeners after DOM is loaded
-            checkButton.addEventListener('click', checkUsernameAvailability);
+            checkButton.addEventListener('click', window.checkUsernameAvailability);
             
             usernameInput.addEventListener('input', function() {
-                isUsernameAvailable = false;
+                window.isUsernameAvailable = false;
                 availabilityDiv.innerHTML = '';
             });
             
             signupForm.addEventListener('submit', handleSignup);
         });
         
-        async function checkUsernameAvailability() {
-            const username = document.getElementById('username').value.trim();
-            const availabilityDiv = document.getElementById('usernameAvailability');
-            const checkButton = document.getElementById('checkUsernameBtn');
-            
-            if (!username) {
-                availabilityDiv.innerHTML = '<span style="color: red;">Please enter a username</span>';
-                return;
-            }
-
-            try {
-                checkButton.disabled = true;
-                checkButton.innerHTML = 'Checking...';
-                
-                // Use AppConnection for API requests
-                const data = await window.AppConnection.request('/api/check-username', {
-                    method: 'POST',
-                    body: JSON.stringify({ username })
-                });
-                
-                if (data.available) {
-                    availabilityDiv.innerHTML = '<span style="color: green;">✓ Username is available!</span>';
-                    window.isUsernameAvailable = true; // Make it a window property so it's accessible in handleSignup
-                } else {
-                    availabilityDiv.innerHTML = '<span style="color: red;">✗ Username is already taken</span>';
-                    window.isUsernameAvailable = false;
-                }
-            } catch (error) {
-                console.error('Error checking username:', error);
-                availabilityDiv.innerHTML = '<span style="color: red;">Error checking username</span>';
-            } finally {
-                checkButton.disabled = false;
-                checkButton.innerHTML = 'Check';
-            }
-        }
-
         async function handleSignup(event) {
             event.preventDefault();
             
