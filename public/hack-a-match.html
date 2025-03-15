@@ -673,59 +673,94 @@
                             // Get the API URL from config
                             const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
                             
-                            // Step 1: Update user's location in database (simplified)
-                            const locationUpdateResponse = await fetch(`${API_BASE_URL}/users/update-location`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    email: currentUser.email,
-                                    latitude,
-                                    longitude
-                                })
-                            });
+                            // First test the API connection
+                            try {
+                                const testResponse = await fetch(`${API_BASE_URL}/test`);
+                                if (!testResponse.ok) {
+                                    throw new Error('API test failed');
+                                }
+                                console.log('API test successful');
+                            } catch (testError) {
+                                console.error('API test error:', testError);
+                                throw new Error('API connection failed. Please try again later.');
+                            }
                             
-                            console.log('Location update response:', await locationUpdateResponse.json());
-                            
-                            // Step 2: Fetch nearby users (simplified)
-                            const nearbyUsersResponse = await fetch(
-                                `${API_BASE_URL}/users/nearby?email=${encodeURIComponent(currentUser.email)}`
-                            );
-                            
-                            const nearbyUsersData = await nearbyUsersResponse.json();
-                            console.log('Nearby users data:', nearbyUsersData);
-                            
-                            // Update UI with success message
-                            locationStatus.innerHTML = `
-                                <div class="location-status success">
-                                    <i class="fas fa-check-circle"></i> 
-                                    Location updated successfully
-                                </div>
-                            `;
-                            
-                            // Process and display nearby users
-                            if (nearbyUsersData.results && nearbyUsersData.results.length > 0) {
-                                const usersFound = nearbyUsersData.results[0].users;
+                            // Step 1: Update user's location in database
+                            try {
+                                const locationUpdateResponse = await fetch(`${API_BASE_URL}/users/update-location`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        email: currentUser.email,
+                                        latitude,
+                                        longitude
+                                    })
+                                });
                                 
-                                if (usersFound.length > 0) {
-                                    membersList.innerHTML = usersFound.map(user => {
-                                        return `
-                                            <div class="community-member">
-                                                <div class="member-avatar">
-                                                    ${user.fullName.charAt(0)}
+                                if (!locationUpdateResponse.ok) {
+                                    throw new Error('Failed to update location');
+                                }
+                                
+                                console.log('Location update successful');
+                            } catch (locationError) {
+                                console.error('Location update error:', locationError);
+                                throw new Error('Failed to update your location. Please try again.');
+                            }
+                            
+                            // Step 2: Fetch nearby users
+                            try {
+                                const nearbyUsersResponse = await fetch(
+                                    `${API_BASE_URL}/users/nearby?email=${encodeURIComponent(currentUser.email)}`
+                                );
+                                
+                                if (!nearbyUsersResponse.ok) {
+                                    throw new Error('Failed to fetch nearby users');
+                                }
+                                
+                                const nearbyUsersData = await nearbyUsersResponse.json();
+                                console.log('Nearby users data:', nearbyUsersData);
+                                
+                                // Update UI with success message
+                                locationStatus.innerHTML = `
+                                    <div class="location-status success">
+                                        <i class="fas fa-check-circle"></i> 
+                                        Location updated successfully
+                                    </div>
+                                `;
+                                
+                                // Process and display nearby users
+                                if (nearbyUsersData.results && nearbyUsersData.results.length > 0) {
+                                    const usersFound = nearbyUsersData.results[0].users;
+                                    
+                                    if (usersFound.length > 0) {
+                                        membersList.innerHTML = usersFound.map(user => {
+                                            return `
+                                                <div class="community-member">
+                                                    <div class="member-avatar">
+                                                        ${user.fullName.charAt(0)}
+                                                    </div>
+                                                    <div class="member-info">
+                                                        <div class="member-name">${user.fullName}</div>
+                                                        <div class="member-bio">${user.bio || 'No bio available'}</div>
+                                                        <div class="member-distance">${user.distance} km away</div>
+                                                    </div>
+                                                    <button class="add-friend-btn" onclick="addFriend('${user.email}')">
+                                                        <i class="fas fa-user-plus"></i>
+                                                    </button>
                                                 </div>
-                                                <div class="member-info">
-                                                    <div class="member-name">${user.fullName}</div>
-                                                    <div class="member-bio">${user.bio || 'No bio available'}</div>
-                                                    <div class="member-distance">${user.distance} km away</div>
-                                                </div>
-                                                <button class="add-friend-btn" onclick="addFriend('${user.email}')">
-                                                    <i class="fas fa-user-plus"></i>
-                                                </button>
+                                            `;
+                                        }).join('');
+                                    } else {
+                                        membersList.innerHTML = `
+                                            <div class="empty-state">
+                                                <i class="fas fa-users-slash"></i>
+                                                <p>No coders found nearby</p>
+                                                <span>Try expanding your search radius</span>
                                             </div>
                                         `;
-                                    }).join('');
+                                    }
                                 } else {
                                     membersList.innerHTML = `
                                         <div class="empty-state">
@@ -735,14 +770,9 @@
                                         </div>
                                     `;
                                 }
-                            } else {
-                                membersList.innerHTML = `
-                                    <div class="empty-state">
-                                        <i class="fas fa-users-slash"></i>
-                                        <p>No coders found nearby</p>
-                                        <span>Try expanding your search radius</span>
-                                    </div>
-                                `;
+                            } catch (nearbyError) {
+                                console.error('Nearby users error:', nearbyError);
+                                throw new Error('Failed to find nearby coders. Please try again.');
                             }
                             
                         } catch (error) {
