@@ -613,6 +613,41 @@
     </div>
 
     <script>
+        // Add this function to send friend requests
+        async function addFriend(recipientEmail) {
+            try {
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    alert('You must be logged in to add friends');
+                    return;
+                }
+                
+                const currentUser = JSON.parse(userString);
+                
+                const response = await fetch('http://localhost:5000/api/send-friend-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderEmail: currentUser.email,
+                        recipientEmail: recipientEmail
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to send friend request');
+                }
+                
+                // Show success message
+                alert('Friend request sent successfully!');
+                
+            } catch (error) {
+                console.error('Error sending friend request:', error);
+                alert(error.message);
+            }
+        }
+
         // Replace the existing DOMContentLoaded event listener section with this updated version
         document.addEventListener('DOMContentLoaded', function() {
             const user = localStorage.getItem('user');
@@ -620,6 +655,9 @@
                 window.location.href = 'login.html';
                 return;
             }
+
+            // Load friend requests when page loads
+            loadFriendRequests();
 
             // Move the location button event listener outside of DOMContentLoaded
             const enableLocationBtn = document.getElementById('enableLocationBtn');
@@ -630,6 +668,25 @@
                     loadNearbyUsers();
                 });
             }
+
+            // Tab navigation
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Hide all tab content
+                    const tabContents = document.querySelectorAll('.tab-content');
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Show the corresponding tab content
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
 
             // Rest of your DOMContentLoaded code...
         });
