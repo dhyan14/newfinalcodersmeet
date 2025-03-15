@@ -116,12 +116,6 @@ app.use(express.static('public', {
   setHeaders: (res, path) => {
     if (path.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript');
-    } else if (path.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    } else if (path.endsWith('.html')) {
-      res.setHeader('Content-Type', 'text/html');
-    } else if (path.endsWith('.json')) {
-      res.setHeader('Content-Type', 'application/json');
     }
   }
 }));
@@ -147,6 +141,12 @@ app.use((req, res, next) => {
   }
   
   next();
+});
+
+// Add a specific route for squad-chat.js
+app.get('/js/squad-chat.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public', 'js', 'squad-chat.js'));
 });
 
 // MongoDB Connection
@@ -444,33 +444,15 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Error handler
+// Add error handling middleware
 app.use((err, req, res, next) => {
-    console.error('Error:', err);
-    
-    // Handle specific errors
-    if (err.name === 'MongoError' || err.name === 'MongooseError') {
-        return res.status(500).json({
-            status: 'error',
-            message: 'Database error occurred',
-            details: process.env.NODE_ENV === 'development' ? err.message : undefined
-        });
-    }
-    
-    if (err.name === 'ValidationError') {
-        return res.status(400).json({
-            status: 'error',
-            message: 'Validation failed',
-            details: err.message
-        });
-    }
-    
-    // Default error response
-    res.status(500).json({
-        status: 'error',
-        message: err.message || 'Internal server error',
-        timestamp: new Date().toISOString()
-    });
+  console.error('Server error:', err);
+  res.status(500).json({
+    error: true,
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : err.message
+  });
 });
 
 // Update the GET endpoint to retrieve messages with "since" parameter
@@ -581,16 +563,17 @@ app.post('/api/squad-messages', async (req, res) => {
   }
 });
 
-// Add a server info endpoint for debugging
+// Add server info endpoint
 app.get('/api/server-info', (req, res) => {
   res.json({
+    status: 'ok',
+    version: '1.0.0',
     environment: process.env.NODE_ENV,
     timestamp: new Date().toISOString(),
-    hostname: req.hostname,
-    headers: req.headers,
-    nodeVersion: process.version,
-    memoryUsage: process.memoryUsage(),
-    uptime: process.uptime()
+    features: {
+      chat: true,
+      socket: true
+    }
   });
 });
 

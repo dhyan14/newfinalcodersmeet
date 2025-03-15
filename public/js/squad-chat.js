@@ -29,31 +29,54 @@ class SquadChat {
   // Initialize chat
   init() {
     // Get user data
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      this.showError('User not logged in');
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        console.warn('No user data found, using default');
+        this.user = { username: 'Anonymous' };
+      } else {
+        this.user = JSON.parse(userData);
+      }
+
+      // Get squad ID
+      this.squadId = this.getSquadId();
+      if (!this.squadId) {
+        // Try to get squad ID from URL path
+        const pathParts = window.location.pathname.split('/');
+        this.squadId = pathParts[pathParts.length - 1].replace('.html', '');
+        
+        if (!this.squadId) {
+          this.showError('No squad ID found');
+          return false;
+        }
+      }
+
+      console.log('Initializing chat with squad ID:', this.squadId);
+      
+      // Initialize socket
+      this.initializeSocket();
+      this.setupEventListeners();
+      return true;
+    } catch (error) {
+      console.error('Chat initialization error:', error);
+      this.showError(error.message);
       return false;
     }
-    this.user = JSON.parse(userData);
-
-    // Get squad ID
-    this.squadId = this.getSquadId();
-    if (!this.squadId) {
-      this.showError('No squad ID found');
-      return false;
-    }
-
-    // Initialize socket
-    this.initializeSocket();
-    this.setupEventListeners();
-    return true;
   }
 
   // Get squad ID from various possible sources
   getSquadId() {
-    return document.getElementById('squad-id')?.value || 
-           document.querySelector('[data-squad-id]')?.dataset.squadId || 
-           new URLSearchParams(window.location.search).get('squadId');
+    const idFromElement = document.getElementById('squad-id')?.value;
+    const idFromDataset = document.querySelector('[data-squad-id]')?.dataset.squadId;
+    const idFromURL = new URLSearchParams(window.location.search).get('squadId');
+    
+    console.log('Squad ID sources:', {
+      element: idFromElement,
+      dataset: idFromDataset,
+      url: idFromURL
+    });
+    
+    return idFromElement || idFromDataset || idFromURL;
   }
 
   // Initialize Socket.IO connection

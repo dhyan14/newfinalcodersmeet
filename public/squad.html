@@ -1371,5 +1371,26 @@
         }
       });
     </script>
+
+    <!-- Add this hidden input with the squad ID -->
+    <input type="hidden" id="squad-id" value="">
+
+    <script>
+    // Set the squad ID when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      // Get squad ID from URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const squadId = urlParams.get('squadId');
+      
+      if (squadId) {
+        document.getElementById('squad-id').value = squadId;
+      } else {
+        // Extract squad ID from path if it's in the format /squad/{id}
+        const pathParts = window.location.pathname.split('/');
+        const pathSquadId = pathParts[pathParts.length - 1].replace('.html', '');
+        document.getElementById('squad-id').value = pathSquadId;
+      }
+    });
+    </script>
 </body>
 </html> 
