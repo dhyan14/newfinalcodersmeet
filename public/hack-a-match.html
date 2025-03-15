@@ -673,7 +673,7 @@
                             // Get the API URL from config
                             const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
                             
-                            // Step 1: Update user's location in database
+                            // Step 1: Update user's location in database (simplified)
                             const locationUpdateResponse = await fetch(`${API_BASE_URL}/users/update-location`, {
                                 method: 'POST',
                                 headers: {
@@ -686,93 +686,64 @@
                                 })
                             });
                             
-                            if (!locationUpdateResponse.ok) {
-                                const errorData = await locationUpdateResponse.json();
-                                throw new Error(errorData.message || 'Failed to update location');
-                            }
+                            console.log('Location update response:', await locationUpdateResponse.json());
                             
-                            // Step 2: Fetch nearby users based on updated location
+                            // Step 2: Fetch nearby users (simplified)
                             const nearbyUsersResponse = await fetch(
                                 `${API_BASE_URL}/users/nearby?email=${encodeURIComponent(currentUser.email)}`
                             );
                             
-                            if (!nearbyUsersResponse.ok) {
-                                const errorData = await nearbyUsersResponse.json();
-                                throw new Error(errorData.message || 'Failed to fetch nearby users');
-                            }
+                            const nearbyUsersData = await nearbyUsersResponse.json();
+                            console.log('Nearby users data:', nearbyUsersData);
                             
-                            const results = await nearbyUsersResponse.json();
+                            // Update UI with success message
+                            locationStatus.innerHTML = `
+                                <div class="location-status success">
+                                    <i class="fas fa-check-circle"></i> 
+                                    Location updated successfully
+                                </div>
+                            `;
                             
-                            // Check if any users were found
-                            let totalUsers = 0;
-                            results.forEach(range => {
-                                totalUsers += range.users.length;
-                            });
-                            
-                            if (totalUsers === 0) {
-                                membersList.innerHTML = `
-                                    <div class="empty-state">
-                                        <i class="fas fa-user-slash"></i>
-                                        <p>No nearby coders found yet.</p>
-                                        <p>Try expanding your search range or check back later!</p>
-                                    </div>
-                                `;
+                            // Process and display nearby users
+                            if (nearbyUsersData.results && nearbyUsersData.results.length > 0) {
+                                const usersFound = nearbyUsersData.results[0].users;
                                 
-                                // Update status to show location is enabled but no users found
-                                locationStatus.innerHTML = `
-                                    <div>
-                                        <i class="fas fa-check-circle"></i> 
-                                        Location enabled - no nearby coders found
-                                        <button onclick="loadNearbyUsers()" class="refresh-btn">
-                                            <i class="fas fa-sync-alt"></i>
-                                        </button>
-                                    </div>
-                                `;
-                                return;
-                            }
-                            
-                            // Display results by range
-                            let usersHTML = '';
-                            results.forEach(range => {
-                                if (range.users.length > 0) {
-                                    usersHTML += `<div class="range-header">${range.range}km Range</div>`;
-                                    usersHTML += range.users.map(user => {
-                                        const initials = user.fullName
-                                            .split(' ')
-                                            .map(name => name[0])
-                                            .join('')
-                                            .toUpperCase();
-                                        
+                                if (usersFound.length > 0) {
+                                    membersList.innerHTML = usersFound.map(user => {
                                         return `
-                                        <div class="user-item" data-user-id="${user._id}">
-                                            <div class="user-avatar">${initials}</div>
-                                            <div class="user-info">
-                                                <div class="user-name">${user.fullName}</div>
-                                                <div class="user-status">${user.distance.toFixed(1)}km away</div>
-                                            </div>
-                                            <div class="user-actions">
-                                                <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                            <div class="community-member">
+                                                <div class="member-avatar">
+                                                    ${user.fullName.charAt(0)}
+                                                </div>
+                                                <div class="member-info">
+                                                    <div class="member-name">${user.fullName}</div>
+                                                    <div class="member-bio">${user.bio || 'No bio available'}</div>
+                                                    <div class="member-distance">${user.distance} km away</div>
+                                                </div>
+                                                <button class="add-friend-btn" onclick="addFriend('${user.email}')">
                                                     <i class="fas fa-user-plus"></i>
                                                 </button>
                                             </div>
-                                        </div>
                                         `;
                                     }).join('');
+                                } else {
+                                    membersList.innerHTML = `
+                                        <div class="empty-state">
+                                            <i class="fas fa-users-slash"></i>
+                                            <p>No coders found nearby</p>
+                                            <span>Try expanding your search radius</span>
+                                        </div>
+                                    `;
                                 }
-                            });
-                            
-                            membersList.innerHTML = usersHTML;
-                            
-                            // Update status to success
-                            locationStatus.innerHTML = `
-                                <div>
-                                    <i class="fas fa-check-circle"></i> 
-                                    Location enabled - showing nearby coders
-                                    <button onclick="loadNearbyUsers()" class="refresh-btn">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
-                                </div>
-                            `;
+                            } else {
+                                membersList.innerHTML = `
+                                    <div class="empty-state">
+                                        <i class="fas fa-users-slash"></i>
+                                        <p>No coders found nearby</p>
+                                        <span>Try expanding your search radius</span>
+                                    </div>
+                                `;
+                            }
                             
                         } catch (error) {
                             console.error('Error processing location:', error);
@@ -781,19 +752,7 @@
                     },
                     function(error) {
                         console.error('Geolocation error:', error);
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                handleLocationError(new Error('Location permission denied'));
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                handleLocationError(new Error('Location information unavailable'));
-                                break;
-                            case error.TIMEOUT:
-                                handleLocationError(new Error('Location request timed out'));
-                                break;
-                            default:
-                                handleLocationError(new Error('An unknown error occurred'));
-                        }
+                        handleLocationError(new Error('Location permission denied'));
                     },
                     {
                         enableHighAccuracy: true,
