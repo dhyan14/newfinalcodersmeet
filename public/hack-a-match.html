@@ -1104,6 +1104,38 @@
                 alert(`Failed to send friend request: ${error.message}`);
             }
         }
+
+        // Test the API connection first
+        async function testApiConnection() {
+            try {
+                const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : 'https://newfinalcodersmeet.vercel.app/api';
+                
+                const response = await fetch(`${API_BASE_URL}/test`);
+                const data = await response.json();
+                
+                console.log('API test response:', data);
+                
+                if (response.ok) {
+                    console.log('API connection successful');
+                    return true;
+                } else {
+                    console.error('API test failed:', data);
+                    return false;
+                }
+            } catch (error) {
+                console.error('API connection test error:', error);
+                return false;
+            }
+        }
+
+        // Call this before trying to use location
+        testApiConnection().then(isConnected => {
+            if (isConnected) {
+                console.log('Ready to use location features');
+            } else {
+                console.error('API connection issues - location features may not work');
+            }
+        });
     </script>
 </body>
 </html> 
