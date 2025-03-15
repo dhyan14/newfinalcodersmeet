@@ -639,3 +639,395 @@ server.listen(PORT, () => {
 
 // For Vercel, export the Express app
 module.exports = app; 
+
+// ========== USER SCHEMA WITH GEOLOCATION SUPPORT ==========
+// Update your existing User schema to include location data
+const userSchema = new mongoose.Schema({
+  fullName: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  // Add these fields for location tracking
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude] in GeoJSON format
+      default: [0, 0]
+    }
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now
+  }
+  // Keep any other existing fields you had
+});
+
+// Add a geospatial index for efficient location queries
+userSchema.index({ location: '2dsphere' });
+
+// If you already defined your User model, update it instead of creating a new one
+const User = mongoose.model('User', userSchema);
+
+// ========== API ENDPOINTS FOR LOCATION SERVICES ==========
+
+// Simple ping endpoint to check if server is running
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is running' });
+});
+
+// Update a user's location by email
+app.post('/api/users/location-by-email', async (req, res) => {
+  try {
+    const { email, latitude, longitude } = req.body;
+    
+    if (!email || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        details: 'Email, latitude, and longitude are required' 
+      });
+    }
+    
+    // Convert string values to numbers if needed
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    
+    // Validate coordinates
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+    
+    // Update user location in database
+    const updatedUser = await User.findOneAndUpdate(
+      { email },
+      { 
+        location: {
+          type: 'Point',
+          coordinates: [lng, lat] // GeoJSON format is [longitude, latitude]
+        },
+        lastActive: new Date()
+      },
+      { new: true }
+    );
+    
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.status(200).json({ 
+      message: 'Location updated successfully',
+      user: {
+        email: updatedUser.email,
+        location: updatedUser.location
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error updating user location:', error);
+    res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// Find nearby users by email within different distance ranges
+app.get('/api/users/nearby-by-email', async (req, res) => {
+  try {
+    const { email, latitude, longitude } = req.query;
+    
+    if (!email || !latitude || !longitude) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    
+    // Validate coordinates
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+    
+    // Find the current user
+    const currentUser = await User.findOne({ email });
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Define distance ranges in kilometers
+    const ranges = [1, 5, 10, 25, 50];
+    const result = [];
+    
+    // Query users within each range
+    for (const range of ranges) {
+      // Get users who were active in the last 24 hours
+      const activeTimeLimit = new Date();
+      activeTimeLimit.setHours(activeTimeLimit.getHours() - 24);
+      
+      const usersInRange = await User.find({
+        email: { $ne: email }, // Exclude current user
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: [lng, lat]
+            },
+            $maxDistance: range * 1000 // Convert km to meters
+          }
+        },
+        lastActive: { $gte: activeTimeLimit } // Only active users
+      }).select('_id fullName email location');
+      
+      // Calculate distance for each user and filter out duplicates
+      const previousUsers = result.flatMap(r => r.users.map(u => u.email));
+      const newUsers = usersInRange.filter(user => !previousUsers.includes(user.email));
+      
+      const usersWithDistance = newUsers.map(user => {
+        const userLng = user.location.coordinates[0];
+        const userLat = user.location.coordinates[1];
+        const distance = calculateDistance(lat, lng, userLat, userLng);
+        
+        return {
+          _id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          distance: distance // Distance in kilometers
+        };
+      });
+      
+      result.push({
+        range,
+        users: usersWithDistance
+      });
+    }
+    
+    res.status(200).json(result);
+    
+  } catch (error) {
+    console.error('Error finding nearby users:', error);
+    res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// API endpoint for sending friend requests
+app.post('/api/send-friend-request', async (req, res) => {
+  try {
+    const { senderEmail, receiverEmail } = req.body;
+    
+    if (!senderEmail || !receiverEmail) {
+      return res.status(400).json({ error: 'Missing sender or receiver email' });
+    }
+    
+    // Prevent sending a friend request to yourself
+    if (senderEmail === receiverEmail) {
+      return res.status(400).json({ error: 'Cannot send friend request to yourself' });
+    }
+    
+    // Find sender and receiver users
+    const sender = await User.findOne({ email: senderEmail });
+    const receiver = await User.findOne({ email: receiverEmail });
+    
+    if (!sender || !receiver) {
+      return res.status(404).json({ error: 'Sender or receiver not found' });
+    }
+    
+    // Check if this friend request already exists
+    const existingRequest = await FriendRequest.findOne({
+      sender: sender._id,
+      receiver: receiver._id,
+      status: 'pending'
+    });
+    
+    if (existingRequest) {
+      return res.status(409).json({ error: 'Friend request already sent' });
+    }
+    
+    // Check if they are already friends
+    const areFriends = await Friendship.findOne({
+      $or: [
+        { user1: sender._id, user2: receiver._id },
+        { user1: receiver._id, user2: sender._id }
+      ]
+    });
+    
+    if (areFriends) {
+      return res.status(409).json({ error: 'Already friends' });
+    }
+    
+    // Create and save new friend request
+    const friendRequest = new FriendRequest({
+      sender: sender._id,
+      receiver: receiver._id,
+      status: 'pending',
+      createdAt: new Date()
+    });
+    
+    await friendRequest.save();
+    
+    res.status(201).json({ message: 'Friend request sent successfully' });
+    
+  } catch (error) {
+    console.error('Error sending friend request:', error);
+    res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// Friend Request Schema
+const friendRequestSchema = new mongoose.Schema({
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
+
+// Friendship Schema to track established friendships
+const friendshipSchema = new mongoose.Schema({
+  user1: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user2: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Ensure no duplicate friendships
+friendshipSchema.index({ user1: 1, user2: 1 }, { unique: true });
+
+const Friendship = mongoose.model('Friendship', friendshipSchema);
+
+// Helper function to calculate distance using Haversine formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of the Earth in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in kilometers
+  
+  return distance;
+}
+
+// Get friend requests endpoint
+app.get('/api/friend-requests', async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    // Find the user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Find pending friend requests for this user
+    const requests = await FriendRequest.find({
+      receiver: user._id,
+      status: 'pending'
+    }).populate('sender', 'fullName email');
+    
+    // Format the response with time ago
+    const formattedRequests = requests.map(request => {
+      const timeAgo = getTimeAgo(request.createdAt);
+      
+      return {
+        _id: request._id,
+        sender: {
+          _id: request.sender._id,
+          fullName: request.sender.fullName,
+          email: request.sender.email
+        },
+        status: request.status,
+        createdAt: request.createdAt,
+        timeAgo
+      };
+    });
+    
+    res.status(200).json(formattedRequests);
+    
+  } catch (error) {
+    console.error('Error fetching friend requests:', error);
+    res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// Helper function to format time ago
+function getTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  
+  let interval = Math.floor(seconds / 31536000);
+  if (interval > 1) return interval + ' years ago';
+  
+  interval = Math.floor(seconds / 2592000);
+  if (interval > 1) return interval + ' months ago';
+  
+  interval = Math.floor(seconds / 86400);
+  if (interval > 1) return interval + ' days ago';
+  if (interval === 1) return 'yesterday';
+  
+  interval = Math.floor(seconds / 3600);
+  if (interval > 1) return interval + ' hours ago';
+  if (interval === 1) return '1 hour ago';
+  
+  interval = Math.floor(seconds / 60);
+  if (interval > 1) return interval + ' minutes ago';
+  if (interval === 1) return '1 minute ago';
+  
+  return 'just now';
+}
+
+// Handle friend request responses
+app.post('/api/friend-request-response', async (req, res) => {
+  try {
+    const { requestId, action } = req.body;
+    
+    if (!requestId || !action || !['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Invalid parameters' });
+    }
+    
+    // Find the friend request
+    const request = await FriendRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
+    
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'This request has already been processed' });
+    }
+    
+    if (action === 'accept') {
+      // Update request status
+      request.status = 'accepted';
+      request.updatedAt = new Date();
+      await request.save();
+      
+      // Create friendship record
+      const friendship = new Friendship({
+        user1: request.sender,
+        user2: request.receiver,
+        createdAt: new Date()
+      });
+      
+      await friendship.save();
+      
+      res.status(200).json({ message: 'Friend request accepted' });
+    } else {
+      // Reject request
+      request.status = 'rejected';
+      request.updatedAt = new Date();
+      await request.save();
+      
+      res.status(200).json({ message: 'Friend request rejected' });
+    }
+    
+  } catch (error) {
+    console.error('Error processing friend request:', error);
+    res.status(500).json({ error: 'Server error', message: error.message });
+  }
+}); 

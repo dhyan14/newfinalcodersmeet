@@ -700,75 +700,126 @@
                     </div>
                 `;
 
-                // Update user's location on server
-                const locationUpdateResponse = await fetch('http://localhost:5000/api/users/location-by-email', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                // Check if server is running
+                try {
+                    // Simple ping to check if server is accessible
+                    const pingResponse = await fetch('http://localhost:5000/api/ping', { 
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                        // For testing connectivity only
+                        mode: 'no-cors'
+                    });
+                    
+                    console.log('Server ping status:', pingResponse.status);
+                } catch (pingError) {
+                    console.error('Server ping failed:', pingError);
+                    throw new Error('Cannot connect to server. Make sure the server is running at http://localhost:5000');
+                }
+
+                // Update user's location on server with better error handling
+                try {
+                    console.log('Sending location update:', {
                         email: currentUser.email,
                         latitude,
                         longitude
-                    })
-                });
-
-                if (!locationUpdateResponse.ok) {
-                    const errorData = await locationUpdateResponse.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to update location on server');
-                }
-                
-                // Fetch nearby users
-                const response = await fetch(
-                    `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
-                );
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to fetch nearby users');
-                }
-
-                const results = await response.json();
-                
-                // Update UI with results
-                if (!results.length || !results.some(range => range.users.length > 0)) {
-                    membersList.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-user-friends"></i>
-                            <p>No nearby coders found yet.</p>
-                            <p>Try expanding your search range or check back later!</p>
-                        </div>
-                    `;
-                } else {
-                    // Display results by range
-                    let usersHTML = '';
-                    results.forEach(range => {
-                        if (range.users.length > 0) {
-                            usersHTML += `<div class="range-header">${range.range}km Range</div>`;
-                            usersHTML += range.users.map(user => {
-                                const initials = user.fullName
-                                    .split(' ')
-                                    .map(name => name[0])
-                                    .join('')
-                                    .toUpperCase();
-                                
-                                return `
-                                <div class="user-item" data-user-id="${user._id}">
-                                    <div class="user-avatar">${initials}</div>
-                                    <div class="user-info">
-                                        <div class="user-name">${user.fullName}</div>
-                                        <div class="user-status">${user.distance.toFixed(1)}km away</div>
-                                    </div>
-                                    <div class="user-actions">
-                                        <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
-                                            <i class="fas fa-user-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                `;
-                            }).join('');
-                        }
                     });
                     
-                    membersList.innerHTML = usersHTML;
+                    const locationUpdateResponse = await fetch('http://localhost:5000/api/users/location-by-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: currentUser.email,
+                            latitude,
+                            longitude
+                        })
+                    });
+
+                    if (!locationUpdateResponse.ok) {
+                        const errorText = await locationUpdateResponse.text();
+                        console.error('Location update response:', locationUpdateResponse.status, errorText);
+                        
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            throw new Error(errorData.message || `Server error (${locationUpdateResponse.status}): Failed to update location`);
+                        } catch (e) {
+                            throw new Error(`Server error (${locationUpdateResponse.status}): ${errorText || 'Failed to update location'}`);
+                        }
+                    }
+                    
+                    console.log('Location update successful');
+                } catch (locationError) {
+                    console.error('Location update error:', locationError);
+                    throw new Error('Failed to update your location on the server: ' + locationError.message);
+                }
+                
+                // Fetch nearby users with better error handling
+                try {
+                    console.log('Fetching nearby users for:', currentUser.email);
+                    
+                    const response = await fetch(
+                        `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
+                    );
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Nearby users response:', response.status, errorText);
+                        
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            throw new Error(errorData.message || `Server error (${response.status}): Failed to fetch nearby users`);
+                        } catch (e) {
+                            throw new Error(`Server error (${response.status}): ${errorText || 'Failed to fetch nearby users'}`);
+                        }
+                    }
+
+                    const results = await response.json();
+                    console.log('Nearby users results:', results);
+                    
+                    // Update UI with results
+                    if (!results.length || !results.some(range => range.users.length > 0)) {
+                        membersList.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-user-friends"></i>
+                                <p>No nearby coders found yet.</p>
+                                <p>Try expanding your search range or check back later!</p>
+                            </div>
+                        `;
+                    } else {
+                        // Display results by range
+                        let usersHTML = '';
+                        results.forEach(range => {
+                            if (range.users.length > 0) {
+                                usersHTML += `<div class="range-header">${range.range}km Range</div>`;
+                                usersHTML += range.users.map(user => {
+                                    const initials = user.fullName
+                                        .split(' ')
+                                        .map(name => name[0])
+                                        .join('')
+                                        .toUpperCase();
+                                    
+                                    return `
+                                    <div class="user-item" data-user-id="${user._id}">
+                                        <div class="user-avatar">${initials}</div>
+                                        <div class="user-info">
+                                            <div class="user-name">${user.fullName}</div>
+                                            <div class="user-status">${user.distance.toFixed(1)}km away</div>
+                                        </div>
+                                        <div class="user-actions">
+                                            <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                                <i class="fas fa-user-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    `;
+                                }).join('');
+                            }
+                        });
+                        
+                        membersList.innerHTML = usersHTML;
+                    }
+                } catch (nearbyError) {
+                    console.error('Fetch nearby users error:', nearbyError);
+                    throw new Error('Failed to fetch nearby users: ' + nearbyError.message);
                 }
                 
                 // Update status to success
