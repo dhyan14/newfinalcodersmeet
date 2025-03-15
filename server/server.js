@@ -1,21 +1,19 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const http = require('http');
 require('dotenv').config();
 
 // Create Express app
 const app = express();
-const server = http.createServer(app);
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS configuration
+// CORS configuration for Vercel
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://your-frontend-domain.com', 'https://www.your-frontend-domain.com']
+    ? ['https://codersmeet.vercel.app', 'https://www.codersmeet.vercel.app']
     : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -26,7 +24,7 @@ app.use(cors({
 app.options('*', cors());
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/codersmeet', {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -54,18 +52,20 @@ app.get('/', (req, res) => {
   res.send('CodersMEET API is running');
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API available at http://localhost:${PORT}/api/health`);
-});
+// For Vercel, we export the Express app
+if (process.env.NODE_ENV === 'production') {
+  module.exports = app;
+} else {
+  // Start server locally
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`API available at http://localhost:${PORT}/api/health`);
+  });
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.log('UNHANDLED REJECTION! 💥 Shutting down...');
+  console.log('UNHANDLED REJECTION! 💥');
   console.log(err.name, err.message);
-  server.close(() => {
-    process.exit(1);
-  });
 }); 

@@ -624,7 +624,7 @@
                 
                 const currentUser = JSON.parse(userString);
                 
-                const response = await fetch('http://localhost:5000/api/send-friend-request', {
+                const response = await fetch('https://your-vercel-api-url.vercel.app/api/send-friend-request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -734,7 +734,7 @@
                             `;
 
                             // Step 1: Update user's location in database
-                            const locationUpdateResponse = await fetch('http://localhost:5000/api/users/update-location', {
+                            const locationUpdateResponse = await fetch('https://your-vercel-api-url.vercel.app/api/users/update-location', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -751,7 +751,7 @@
                             
                             // Step 2: Fetch nearby users based on updated location
                             const nearbyUsersResponse = await fetch(
-                                `http://localhost:5000/api/users/nearby?email=${encodeURIComponent(currentUser.email)}`
+                                `https://your-vercel-api-url.vercel.app/api/users/nearby?email=${encodeURIComponent(currentUser.email)}`
                             );
                             
                             if (!nearbyUsersResponse.ok) {
@@ -941,7 +941,7 @@
                     return;
                 }
                 
-                const response = await fetch(`http://localhost:5000/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
+                const response = await fetch(`https://your-vercel-api-url.vercel.app/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
                 if (!response.ok) {
                     throw new Error('Failed to load friend requests');
                 }
@@ -1003,7 +1003,7 @@
         // Handle accept/reject actions
         async function respondToRequest(requestId, action) {
             try {
-                const response = await fetch('http://localhost:5000/api/friend-request-response', {
+                const response = await fetch('https://your-vercel-api-url.vercel.app/api/friend-request-response', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
