@@ -22,7 +22,7 @@ app.use(cors({
 // Make sure OPTIONS requests are handled properly
 app.options('*', cors());
 
-// Connect to MongoDB
+// Connect to MongoDB with better error handling
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -32,6 +32,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
 .catch(err => {
   console.error('MongoDB connection error:', err);
+  // Don't crash the server, but log the error
+  // This allows the API to still work for non-DB operations
 });
 
 // Import routes
@@ -39,12 +41,14 @@ const userRoutes = require('./routes/userRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const friendRequestRoutes = require('./routes/friendRequestRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // Use routes
 app.use('/api/users', userRoutes);
 app.use('/api', locationRoutes);
 app.use('/api', healthRoutes);
 app.use('/api', friendRequestRoutes);
+app.use('/api', authRoutes);
 
 // Root route
 app.get('/', (req, res) => {
