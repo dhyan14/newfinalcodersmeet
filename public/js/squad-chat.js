@@ -60,7 +60,7 @@ class SquadChat {
   initializeSocket() {
     this.socket = io({
       path: '/socket.io/',
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000
@@ -109,11 +109,11 @@ class SquadChat {
     const message = this.messageInput.value.trim();
     if (!message) return;
 
-    this.socket.emit('chat-message', {
+    this.socket.emit('squad-message', {
       squadId: this.squadId,
+      message: message,
       senderId: this.user._id,
-      senderName: this.user.username,
-      message: message
+      sender: this.user.username || 'Anonymous'
     });
 
     this.messageInput.value = '';

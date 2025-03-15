@@ -18,12 +18,14 @@ const server = http.createServer(app);
 // Initialize Socket.IO with proper configuration
 const io = require('socket.io')(server, {
   cors: {
-    origin: "*",  // In production, change this to your frontend URL
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app']
+      : ['http://localhost:5000', 'http://localhost:3000'],
     methods: ["GET", "POST"],
     credentials: true
   },
   path: '/socket.io/',
-  transports: ['polling', 'websocket']
+  transports: ['websocket', 'polling']
 });
 
 // Socket.IO connection handling
@@ -45,6 +47,7 @@ io.on('connection', (socket) => {
       const messages = await SquadChat.find({ squadId })
         .sort({ timestamp: -1 })
         .limit(50)
+        .populate('sender', 'username fullName')
         .lean();
 
       socket.emit('chat-history', messages.reverse());
@@ -55,7 +58,7 @@ io.on('connection', (socket) => {
   });
 
   // Handle chat messages
-  socket.on('chat-message', async (data) => {
+  socket.on('squad-message', async (data) => {
     try {
       if (!data.squadId || !data.message) {
         throw new Error('Invalid message data');
@@ -64,7 +67,7 @@ io.on('connection', (socket) => {
       const message = new SquadChat({
         squadId: data.squadId,
         sender: data.senderId,
-        senderName: data.senderName,
+        senderName: data.sender || 'Anonymous',
         content: data.message,
         timestamp: new Date()
       });
