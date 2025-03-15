@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Admin Test</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; }
+        button { padding: 10px 15px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        .error { color: red; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Admin Login Test</h1>
+        
+        <div id="testRouteResult"></div>
+        
+        <div class="form-group">
+            <button id="testRouteBtn">Test API Route</button>
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="admin@codersmeet.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" value="admin@codersmeet.com">
+            </div>
+            
+            <button type="submit">Login</button>
+        </form>
+        
+        <div id="loginResult"></div>
+    </div>
+    
+    <script>
+        // Test the test route
+        document.getElementById('testRouteBtn').addEventListener('click', function() {
+            fetch('/api/test-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ test: true })
+            })
+            .then(response => {
+                document.getElementById('testRouteResult').innerHTML = 
+                    `<div class="success">Test route status: ${response.status}</div>`;
+                return response.text();
+            })
+            .then(text => {
+                document.getElementById('testRouteResult').innerHTML += 
+                    `<div class="success">Response: ${text}</div>`;
+            })
+            .catch(error => {
+                document.getElementById('testRouteResult').innerHTML = 
+                    `<div class="error">Error: ${error.message}</div>`;
+            });
+        });
+        
+        // Handle login form
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            document.getElementById('loginResult').innerHTML = 
+                `<div>Attempting login with ${email}...</div>`;
+            
+            fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+                credentials: 'include'
+            })
+            .then(response => {
+                document.getElementById('loginResult').innerHTML += 
+                    `<div>Response status: ${response.status}</div>`;
+                return response.text();
+            })
+            .then(text => {
+                document.getElementById('loginResult').innerHTML += 
+                    `<div>Response text: ${text}</div>`;
+                
+                try {
+                    const data = JSON.parse(text);
+                    if (data.message === 'Admin login successful') {
+                        document.getElementById('loginResult').innerHTML += 
+                            `<div class="success">Login successful!</div>`;
+                    }
+                } catch (e) {
+                    document.getElementById('loginResult').innerHTML += 
+                        `<div class="error">Error parsing JSON: ${e.message}</div>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('loginResult').innerHTML += 
+                    `<div class="error">Fetch error: ${error.message}</div>`;
+            });
+        });
+    </script>
+</body>
+</html> 

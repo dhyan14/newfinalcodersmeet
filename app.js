@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const session = require('express-session');
 const adminRoutes = require('./routes/admin');
+console.log('Admin routes loaded:', Object.keys(adminRoutes));
 const path = require('path');
 const MongoStore = require('connect-mongo');
 const mongoose = require('mongoose');
@@ -44,6 +45,12 @@ app.get('/api/admin-ping-direct', (req, res) => {
     return res.send(JSON.stringify({ status: 'authenticated', isAdmin: true }));
   }
   return res.send(JSON.stringify({ status: 'unauthenticated', isAdmin: false }));
+});
+
+// Add this test route BEFORE any other routes
+app.post('/api/test-login', (req, res) => {
+  console.log('Test login route hit!', req.body);
+  res.json({ message: 'Test login route working' });
 });
 
 // API routes - Make sure these are registered BEFORE any catch-all routes
