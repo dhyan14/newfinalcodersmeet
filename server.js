@@ -229,16 +229,6 @@ app.get('/api/users/:id', async (req, res) => {
     }
 });
 
-// Serve static files
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// HTML file handler
-app.get('/*.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', req.path));
-});
-
 // Update user location
 app.post('/api/users/location-by-email', async (req, res) => {
     try {
@@ -511,7 +501,17 @@ app.post('/api/friend-request-response', async (req, res) => {
     }
 });
 
-// Catch-all route
+// Serve static files
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// HTML file handler
+app.get('/*.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', req.path));
+});
+
+// Catch-all route SHOULD BE LAST
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -554,11 +554,5 @@ app.use((req, res) => {
     });
 });
 
-// After all your routes and middleware...
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// Keep the module.exports if needed for testing
+// Just keep the export
 module.exports = app; 
