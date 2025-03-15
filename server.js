@@ -229,11 +229,13 @@ app.get('/api/users/:id', async (req, res) => {
     }
 });
 
-// Update user location
+// Update user location with debugging
 app.post('/api/users/location-by-email', async (req, res) => {
     try {
         await connectToDatabase();
         const { email, latitude, longitude } = req.body;
+        
+        console.log('Updating location for:', { email, latitude, longitude }); // Debug log
         
         if (!email || latitude === undefined || longitude === undefined) {
             return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
@@ -256,6 +258,9 @@ app.post('/api/users/location-by-email', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
+        console.log('Location updated for user:', user._id); // Debug log
+        console.log('Updated location:', user.location); // Debug log
+        
         res.json({ success: true, message: 'Location updated successfully' });
     } catch (error) {
         console.error('Error updating location:', error);
@@ -263,11 +268,13 @@ app.post('/api/users/location-by-email', async (req, res) => {
     }
 });
 
-// Get nearby users
+// Get nearby users - add debugging
 app.get('/api/users/nearby-by-email', async (req, res) => {
     try {
         await connectToDatabase();
         const { email, latitude, longitude } = req.query;
+        
+        console.log('Nearby request params:', { email, latitude, longitude }); // Debug log
         
         if (!email || !latitude || !longitude) {
             return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
@@ -279,6 +286,8 @@ app.get('/api/users/nearby-by-email', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
+        console.log('Current user found:', currentUser._id); // Debug log
+        
         // Define search ranges in kilometers
         const ranges = [1, 5, 10]; // 1km, 5km, 10km ranges
         const results = [];
@@ -287,6 +296,30 @@ app.get('/api/users/nearby-by-email', async (req, res) => {
         const lat = parseFloat(latitude);
         const lng = parseFloat(longitude);
         
+        console.log('Parsed coordinates:', { lat, lng }); // Debug log
+        
+        // Simpler approach without $geoNear first to test
+        const allUsers = await User.find({ 
+            _id: { $ne: currentUser._id }
+        }).limit(10);
+        
+        console.log(`Found ${allUsers.length} other users in total`); // Debug log
+        
+        // Return simple results for now
+        res.json([
+            {
+                range: 10,
+                users: allUsers.map(user => ({
+                    _id: user._id,
+                    fullName: user.fullName,
+                    username: user.username,
+                    email: user.email,
+                    distance: 5 // Mock distance
+                }))
+            }
+        ]);
+        
+        /* Comment out the complex query for now
         // For each range, find users within that distance
         for (const range of ranges) {
             // Use MongoDB's $geoNear aggregation to find nearby users
@@ -327,6 +360,7 @@ app.get('/api/users/nearby-by-email', async (req, res) => {
         }
         
         res.json(results);
+        */
     } catch (error) {
         console.error('Error finding nearby users:', error);
         res.status(500).json({ error: 'Failed to find nearby users', details: error.message });
