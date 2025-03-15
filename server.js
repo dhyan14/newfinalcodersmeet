@@ -539,6 +539,16 @@ app.post('/api/friend-request-response', async (req, res) => {
     }
 });
 
+// Add this endpoint before the error handlers and catch-all routes
+app.get('/api/debug', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API is working',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Serve static files
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -590,16 +600,6 @@ app.use((req, res) => {
         message: 'Not Found',
         path: req.path
     });
-});
-
-// Add this near the top of your routes
-app.get('/api/debug', (req, res) => {
-  res.json({
-    success: true,
-    message: 'API is working',
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString()
-  });
 });
 
 // Just keep the export
