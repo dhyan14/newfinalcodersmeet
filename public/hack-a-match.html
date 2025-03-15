@@ -453,6 +453,26 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+
+        /* Add these styles for the friend request button */
+        .user-action-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .user-action-btn:hover {
+            transform: scale(1.1);
+            background: var(--secondary-color);
+        }
     </style>
 </head>
 <body>
@@ -621,6 +641,9 @@
                 return;
             }
 
+            // Load friend requests when page loads
+            loadFriendRequests();
+
             // Move the location button event listener outside of DOMContentLoaded
             const enableLocationBtn = document.getElementById('enableLocationBtn');
             if (enableLocationBtn) {
@@ -631,23 +654,38 @@
                 });
             }
 
+            // Set up the tab navigation
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs and contents
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to current tab and content
+                    this.classList.add('active');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+
             // Rest of your DOMContentLoaded code...
         });
 
         // Update the beginning of loadNearbyUsers function
-            async function loadNearbyUsers() {
+        async function loadNearbyUsers() {
             console.log('loadNearbyUsers called'); // Debug log
             const locationStatus = document.getElementById('locationStatus');
             const membersList = document.getElementById('communityMembersList');
             
-                try {
+            try {
                 // Get current user
-                    const userString = localStorage.getItem('user');
-                    if (!userString) {
-                        throw new Error('User not logged in');
-                    }
-                    const currentUser = JSON.parse(userString);
-                    
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    throw new Error('User not logged in');
+                }
+                const currentUser = JSON.parse(userString);
+                
                 // Update UI to loading state
                 locationStatus.innerHTML = `
                     <div class="location-status loading">
@@ -666,7 +704,7 @@
                     async function(position) {
                         try {
                             console.log('Location permission granted'); // Debug log
-                    const { latitude, longitude } = position.coords;
+                            const { latitude, longitude } = position.coords;
                             
                             // Update location status
                             locationStatus.innerHTML = `
@@ -678,32 +716,34 @@
 
                             // Update user's location on server
                             const locationUpdate = await fetch('http://localhost:5000/api/users/location-by-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: currentUser.email,
-                            latitude,
-                            longitude
-                        })
-                    });
-                    
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    email: currentUser.email,
+                                    latitude,
+                                    longitude
+                                })
+                            });
+                            
                             if (!locationUpdate.ok) {
-                                throw new Error('Failed to update location');
+                                const errorData = await locationUpdate.json();
+                                throw new Error(errorData.error || 'Failed to update location');
                             }
                             
                             // Fetch nearby users
-                    const response = await fetch(
-                        `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
-                    );
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch nearby users');
-                    }
-                    
-                    const results = await response.json();
-                    
+                            const response = await fetch(
+                                `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
+                            );
+                            
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.error || 'Failed to fetch nearby users');
+                            }
+                            
+                            const results = await response.json();
+                            
                             // Update UI with results
-                    if (!results.length || !results.some(range => range.users.length > 0)) {
+                            if (!results.length || !results.some(range => range.users && range.users.length > 0)) {
                                 membersList.innerHTML = `
                                     <div class="empty-state">
                                         <i class="fas fa-user-friends"></i>
@@ -711,40 +751,53 @@
                                         <p>Try expanding your search range or check back later!</p>
                                     </div>
                                 `;
-                        return;
-                    }
-                    
-                            // Display results by range
-                    let usersHTML = '';
-                    results.forEach(range => {
-                        if (range.users.length > 0) {
-                            usersHTML += `<div class="range-header">${range.range}km Range</div>`;
-                            usersHTML += range.users.map(user => {
-                                const initials = user.fullName
-                                    .split(' ')
-                                    .map(name => name[0])
-                                    .join('')
-                                    .toUpperCase();
                                 
-                                return `
-                                <div class="user-item" data-user-id="${user._id}">
-                                    <div class="user-avatar">${initials}</div>
-                                    <div class="user-info">
-                                        <div class="user-name">${user.fullName}</div>
-                                                    <div class="user-status">${user.distance.toFixed(1)}km away</div>
-                                    </div>
-                                    <div class="user-actions">
-                                                    <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
-                                            <i class="fas fa-user-plus"></i>
+                                // Update status to success even if no users found
+                                locationStatus.innerHTML = `
+                                    <div>
+                                        <i class="fas fa-check-circle"></i> 
+                                        Location enabled - no nearby coders found
+                                        <button onclick="loadNearbyUsers()" class="refresh-btn">
+                                            <i class="fas fa-sync-alt"></i>
                                         </button>
                                     </div>
-                                </div>
                                 `;
-                            }).join('');
-                        }
-                    });
-                    
-                    membersList.innerHTML = usersHTML;
+                                return;
+                            }
+                            
+                            // Display results by range
+                            let usersHTML = '';
+                            results.forEach(range => {
+                                if (range.users && range.users.length > 0) {
+                                    usersHTML += `<div class="range-header">${range.range}km Range</div>`;
+                                    usersHTML += range.users.map(user => {
+                                        const initials = user.fullName
+                                            ? user.fullName
+                                                .split(' ')
+                                                .map(name => name[0])
+                                                .join('')
+                                                .toUpperCase()
+                                            : 'U';
+                                        
+                                        return `
+                                        <div class="user-item" data-user-id="${user._id}">
+                                            <div class="user-avatar">${initials}</div>
+                                            <div class="user-info">
+                                                <div class="user-name">${user.fullName || 'Unknown User'}</div>
+                                                <div class="user-status">${user.distance.toFixed(1)}km away</div>
+                                            </div>
+                                            <div class="user-actions">
+                                                <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        `;
+                                    }).join('');
+                                }
+                            });
+                            
+                            membersList.innerHTML = usersHTML;
                             
                             // Update status to success
                             locationStatus.innerHTML = `
@@ -753,7 +806,7 @@
                                     Location enabled - showing nearby coders
                                     <button onclick="loadNearbyUsers()" class="refresh-btn">
                                         <i class="fas fa-sync-alt"></i>
-                            </button>
+                                    </button>
                                 </div>
                             `;
                             
@@ -1049,6 +1102,41 @@
                 return 'IE';
             } else {
                 return 'Unknown';
+            }
+        }
+
+        // Add friend function
+        async function addFriend(receiverEmail) {
+            try {
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    alert('You must be logged in to add friends');
+                    return;
+                }
+                
+                const currentUser = JSON.parse(userString);
+                
+                const response = await fetch('http://localhost:5000/api/send-friend-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderEmail: currentUser.email,
+                        receiverEmail: receiverEmail
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to send friend request');
+                }
+                
+                // Show success message
+                alert('Friend request sent successfully!');
+                
+            } catch (error) {
+                console.error('Error sending friend request:', error);
+                alert(error.message);
             }
         }
     </script>
