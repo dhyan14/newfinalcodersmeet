@@ -23,6 +23,8 @@ body{
     --nav-bg: rgba(255,255,255,0.8);
     --card-bg: rgba(255,255,255,0.1);
     --border-color: #e0e0e0;
+    --secondary-color: #045D26;
+    --secondary-text: #666;
 }
 
 /* Dark Theme */

@@ -113,11 +113,17 @@ app.options('*', cors(corsOptions));
 // Other middleware
 app.use(express.json());
 app.use(express.static('public', {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript');
+        } else if (path.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css');
+        } else if (path.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html');
+        } else if (path.endsWith('.json')) {
+            res.setHeader('Content-Type', 'application/json');
+        }
     }
-  }
 }));
 
 // Add better error logging
@@ -143,10 +149,35 @@ app.use((req, res, next) => {
   next();
 });
 
-// Add a specific route for squad-chat.js
+// Add specific routes for key files
 app.get('/js/squad-chat.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'public', 'js', 'squad-chat.js'));
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, 'public', 'js', 'squad-chat.js'));
+});
+
+app.get('/js/fallback-chat.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, 'public', 'js', 'fallback-chat.js'));
+});
+
+app.get('/socket.io/socket.io.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, 'node_modules', 'socket.io', 'client-dist', 'socket.io.js'));
+});
+
+// Add proper error handling for static files
+app.use((err, req, res, next) => {
+    if (err.code === 'ENOENT') {
+        res.status(404).json({ error: 'File not found' });
+    } else {
+        console.error('Server error:', err);
+        res.status(500).json({
+            error: true,
+            message: process.env.NODE_ENV === 'production' 
+                ? 'Internal server error' 
+                : err.message
+        });
+    }
 });
 
 // MongoDB Connection

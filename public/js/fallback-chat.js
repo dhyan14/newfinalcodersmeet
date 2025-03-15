@@ -15,16 +15,15 @@
     console.log('Initializing fallback chat...');
     
     // Get the current user
-    currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    currentUser = localStorage.getItem('user') 
+      ? JSON.parse(localStorage.getItem('user')).username 
+      : 'TESTUSER';
     
     // Get the squad ID from various possible sources
-    fallbackSquadId = document.getElementById('squad-id')?.value || 
-              document.querySelector('[data-squad-id]')?.dataset.squadId || 
-              new URLSearchParams(window.location.search).get('squadId') || 
-              window.location.pathname.split('/').pop();
+    fallbackSquadId = document.getElementById('squad-id')?.value || 'squad.html';
     
     console.log('Fallback Chat - Squad ID:', fallbackSquadId);
-    console.log('Fallback Chat - Current user:', currentUser.username || currentUser.email || 'Anonymous');
+    console.log('Fallback Chat - Current user:', currentUser);
     
     // Test if API is available
     testApiAvailability();
@@ -177,13 +176,13 @@
     const message = messageInput.value.trim();
     if (!message) return;
     
-    const senderName = currentUser.username || currentUser.fullName || currentUser.email || 'Anonymous';
+    const senderName = currentUser || 'Anonymous';
     
     const messageData = {
       squadId: fallbackSquadId,
       message: message,
       sender: senderName,
-      senderId: currentUser._id || 'anonymous',
+      senderId: currentUser ? currentUser._id || 'anonymous' : 'anonymous',
       timestamp: new Date().toISOString()
     };
     
@@ -247,7 +246,7 @@
     messageElement.className = 'message';
     
     // Determine if this is the current user's message
-    const isCurrentUser = data.sender === (currentUser.username || currentUser.fullName || currentUser.email);
+    const isCurrentUser = data.sender === (currentUser || 'Anonymous');
     messageElement.classList.add(isCurrentUser ? 'sent' : 'received');
     
     // Format the timestamp
@@ -295,11 +294,67 @@
 
   // Expose functions globally with a unique namespace
   window.FallbackChat = {
-    sendMessage: sendMessage,
-    startPolling: startPolling,
-    stopPolling: function() { isPolling = false; },
-    useLocalStorage: function(use) { useLocalStorage = use; }
+    useLocalStorage: false,
+    pollingInterval: null,
+
+    init: function() {
+      console.log('Initializing fallback chat...');
+      this.squadId = document.getElementById('squad-id')?.value || 'squad.html';
+      this.currentUser = localStorage.getItem('user') 
+        ? JSON.parse(localStorage.getItem('user')).username 
+        : 'TESTUSER';
+      
+      console.log('Fallback Chat - Squad ID:', this.squadId);
+      console.log('Fallback Chat - Current user:', this.currentUser);
+      
+      return true;
+    },
+
+    startPolling: function() {
+      if (this.pollingInterval) return;
+      console.log('Starting fallback message polling...');
+      
+      // Poll for new messages every 3 seconds
+      this.pollingInterval = setInterval(() => {
+        this.checkForNewMessages();
+      }, 3000);
+    },
+
+    stopPolling: function() {
+      if (this.pollingInterval) {
+        clearInterval(this.pollingInterval);
+        this.pollingInterval = null;
+      }
+    },
+
+    sendMessage: function() {
+      const input = document.getElementById('message-input');
+      const message = input.value.trim();
+      
+      if (!message) return;
+      
+      const messageData = {
+        content: message,
+        sender: this.currentUser,
+        timestamp: new Date().toISOString()
+      };
+
+      if (this.useLocalStorage) {
+        this.saveMessageToLocalStorage(messageData);
+      } else {
+        this.saveMessageToAPI(messageData);
+      }
+
+      input.value = '';
+    },
+
+    // Add more methods as needed
   };
+
+  // Initialize fallback chat when the page loads
+  document.addEventListener('DOMContentLoaded', () => {
+    window.FallbackChat.init();
+  });
 
   // Add this function to the fallback chat implementation
   function updateConnectionStatus(message, status) {
