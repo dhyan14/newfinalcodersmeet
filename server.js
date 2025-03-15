@@ -15,18 +15,27 @@ const SquadChat = require('./models/SquadChat');
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.IO with proper configuration
+// Configure CORS first, before any routes
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// Configure Socket.IO with permissive settings
 const io = require('socket.io')(server, {
   cors: {
-    origin: '*', // Allow all origins in development
+    origin: "*",
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    transports: ['polling', 'websocket']
   },
-  path: '/socket.io/',
-  transports: ['polling', 'websocket'], // Try polling first
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  allowEIO3: true // Enable compatibility mode
+  allowEIO3: true,
+  path: '/socket.io/'
 });
 
 // Add Socket.IO connection handling with better error handling
@@ -612,20 +621,15 @@ app.get('/api/server-info', (req, res) => {
     status: 'ok',
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    features: {
-      chat: true,
-      socket: true
-    }
+    timestamp: new Date().toISOString()
   });
 });
 
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-  server.listen(process.env.PORT || 3000, () => {
-    console.log(`Server running on port ${process.env.PORT || 3000}`);
-  });
-}
+// Start the server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 // For Vercel, export the Express app
 module.exports = app; 
