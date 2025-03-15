@@ -1,5 +1,5 @@
-// Simplified friend request endpoint
-module.exports = async (req, res) => {
+// Minimal friend request endpoint
+module.exports = (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,19 +11,10 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  try {
-    // Just return a success response for testing
-    res.status(200).json({ 
-      success: true, 
-      message: 'Friend request sent successfully',
-      receivedData: req.body
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Server error',
-      message: error.message
-    });
-  }
+  // Return a simple success response
+  res.status(200).json({ 
+    success: true, 
+    message: 'Friend request sent successfully',
+    receivedData: req.body || {}
+  });
 }; 

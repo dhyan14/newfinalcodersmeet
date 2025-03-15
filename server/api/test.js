@@ -1,4 +1,4 @@
-// Simple test endpoint
+// Minimal test endpoint
 module.exports = (req, res) => {
   res.status(200).json({
     success: true,
