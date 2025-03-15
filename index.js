@@ -1,16 +1,4 @@
-const server = require('./server');
-const PORT = process.env.PORT || 3000;
-
-// Check if server is an Express app or HTTP server
-if (server.listen) {
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-} else {
-  // If it's an Express app, create HTTP server
-  const http = require('http');
-  const httpServer = http.createServer(server);
-  httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-} 
+// Simple entry point for Vercel
+module.exports = (req, res) => {
+  res.status(200).send('CodersMEET API is running');
+}; 

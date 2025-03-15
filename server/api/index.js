@@ -11,68 +11,77 @@ module.exports = (req, res) => {
     return res.status(200).end();
   }
 
-  // Get the path from the URL
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const path = url.pathname.replace(/^\/api\//, '');
+  try {
+    // Get the path from the URL
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const path = url.pathname.replace(/^\/api\//, '');
 
-  console.log(`API request: ${req.method} ${path}`);
+    console.log(`API request: ${req.method} ${path}`);
 
-  // Handle different endpoints
-  switch (path) {
-    case 'test':
-      return res.status(200).json({
-        success: true,
-        message: 'API test endpoint is working',
-        timestamp: new Date().toISOString()
-      });
+    // Handle different endpoints
+    switch (path) {
+      case 'test':
+        return res.status(200).json({
+          success: true,
+          message: 'API test endpoint is working',
+          timestamp: new Date().toISOString()
+        });
 
-    case 'users/update-location':
-      return res.status(200).json({
-        success: true,
-        message: 'Location update endpoint is working',
-        receivedData: req.body || {}
-      });
+      case 'users/update-location':
+        return res.status(200).json({
+          success: true,
+          message: 'Location update endpoint is working',
+          receivedData: req.body || {}
+        });
 
-    case 'users/nearby':
-      return res.status(200).json({
-        success: true,
-        message: 'Nearby users endpoint is working',
-        results: [
-          {
-            range: 5,
-            users: [
-              {
-                _id: '1',
-                fullName: 'Test User 1',
-                email: 'test1@example.com',
-                bio: 'Frontend Developer',
-                skills: ['JavaScript', 'React', 'CSS'],
-                distance: 5
-              },
-              {
-                _id: '2',
-                fullName: 'Test User 2',
-                email: 'test2@example.com',
-                bio: 'Backend Developer',
-                skills: ['Node.js', 'Express', 'MongoDB'],
-                distance: 5
-              }
-            ]
-          }
-        ]
-      });
+      case 'users/nearby':
+        return res.status(200).json({
+          success: true,
+          message: 'Nearby users endpoint is working',
+          results: [
+            {
+              range: 5,
+              users: [
+                {
+                  _id: '1',
+                  fullName: 'Test User 1',
+                  email: 'test1@example.com',
+                  bio: 'Frontend Developer',
+                  skills: ['JavaScript', 'React', 'CSS'],
+                  distance: 5
+                },
+                {
+                  _id: '2',
+                  fullName: 'Test User 2',
+                  email: 'test2@example.com',
+                  bio: 'Backend Developer',
+                  skills: ['Node.js', 'Express', 'MongoDB'],
+                  distance: 5
+                }
+              ]
+            }
+          ]
+        });
 
-    case 'send-friend-request':
-      return res.status(200).json({
-        success: true,
-        message: 'Friend request sent successfully',
-        receivedData: req.body || {}
-      });
+      case 'send-friend-request':
+        return res.status(200).json({
+          success: true,
+          message: 'Friend request sent successfully',
+          receivedData: req.body || {}
+        });
 
-    default:
-      return res.status(404).json({
-        success: false,
-        message: `Endpoint not found: ${path}`
-      });
+      default:
+        return res.status(404).json({
+          success: false,
+          message: `Endpoint not found: ${path}`
+        });
+    }
+  } catch (error) {
+    console.error('API error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
   }
 }; 
