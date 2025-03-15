@@ -1,62 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>CodersMEET API</title>
+  <title>API Test</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      line-height: 1.6;
-    }
-    h1 {
-      color: #333;
-    }
-    .endpoint {
-      background: #f5f5f5;
-      padding: 10px;
-      border-radius: 5px;
-      margin-bottom: 10px;
-    }
-    code {
-      background: #eee;
-      padding: 2px 5px;
-      border-radius: 3px;
-    }
+    body { font-family: sans-serif; margin: 30px; line-height: 1.6; }
+    pre { background: #f5f5f5; padding: 15px; border-radius: 4px; }
   </style>
 </head>
 <body>
-  <h1>CodersMEET API</h1>
-  <p>The API is running. You can test the following endpoints:</p>
-  
-  <div class="endpoint">
-    <strong>Test Endpoint:</strong> <code>/api/test</code>
-  </div>
-  
-  <div class="endpoint">
-    <strong>Update Location:</strong> <code>/api/users/update-location</code>
-  </div>
-  
-  <div class="endpoint">
-    <strong>Nearby Users:</strong> <code>/api/users/nearby</code>
-  </div>
-  
-  <div class="endpoint">
-    <strong>Send Friend Request:</strong> <code>/api/send-friend-request</code>
-  </div>
-  
+  <h1>API Test</h1>
+  <p>Testing connection to the API...</p>
+  <div id="result">Loading...</div>
+
   <script>
-    // Test the API
+    // Simple fetch test
     fetch('/api/test')
       .then(response => response.json())
       .then(data => {
-        console.log('API test response:', data);
-        document.body.innerHTML += `<p>API test successful! Response: ${JSON.stringify(data)}</p>`;
+        document.getElementById('result').innerHTML = 
+          '<p>✅ API is working!</p><pre>' + 
+          JSON.stringify(data, null, 2) + 
+          '</pre>';
       })
       .catch(error => {
-        console.error('API test error:', error);
-        document.body.innerHTML += `<p>API test failed: ${error.message}</p>`;
+        document.getElementById('result').innerHTML = 
+          '<p>❌ API Error: ' + error.message + '</p>';
       });
   </script>
 </body>
