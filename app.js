@@ -4,7 +4,15 @@ const session = require('express-session');
 const adminRoutes = require('./routes/admin');
 const path = require('path');
 const MongoStore = require('connect-mongo');
+const mongoose = require('mongoose');
+require('dotenv').config();
 const adminPingRoutes = require('./routes/admin-ping');
+
+// Connect to MongoDB
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/hack-a-match';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Body parser middleware - MUST come BEFORE routes
 app.use(express.json());
@@ -16,7 +24,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/hack-a-match',
+    mongoUrl: MONGODB_URI,
     ttl: 24 * 60 * 60 // 1 day
   }),
   cookie: { 
@@ -28,9 +36,8 @@ app.use(session({
 // Static files middleware
 app.use(express.static('public'));
 
-// Add this direct route immediately after your static files middleware
+// Direct admin ping route for debugging
 app.get('/api/admin-ping-direct', (req, res) => {
-  // Send plain text for debugging
   res.set('Content-Type', 'application/json');
   
   if (req.session && req.session.userId && req.session.isAdmin) {
@@ -39,13 +46,15 @@ app.get('/api/admin-ping-direct', (req, res) => {
   return res.send(JSON.stringify({ status: 'unauthenticated', isAdmin: false }));
 });
 
-// Add this after your static middleware but before your API routes
+// API routes - Make sure these are registered BEFORE any catch-all routes
+app.use('/api/admin', adminRoutes);
+
+// Add this after your static middleware but before any catch-all routes
 app.get('/admin-dashboard.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
 });
 
 // API routes
-app.use('/api/admin', adminRoutes);
 app.use('/api', adminPingRoutes);
 
 // Other routes...

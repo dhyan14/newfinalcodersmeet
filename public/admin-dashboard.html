@@ -155,7 +155,11 @@
                         return data;
                     } catch (e) {
                         console.error('Error parsing login response:', e);
-                        throw new Error('Invalid response format');
+                        if (response.status === 404) {
+                            throw new Error('Admin API endpoint not found. Please check server configuration.');
+                        } else {
+                            throw new Error('Invalid response format');
+                        }
                     }
                 });
             })
