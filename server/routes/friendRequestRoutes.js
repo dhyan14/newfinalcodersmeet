@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/userModel'); // Adjust path as needed
+const User = require('../models/User'); // Fix the path - was userModel
 const mongoose = require('mongoose');
 const FriendRequest = require('../models/FriendRequest');
 
