@@ -730,7 +730,6 @@
                             `;
 
                             // Update user's location on server
-                            const API_BASE_URL = 'http://localhost:3001';
                             const locationUpdate = await fetch(`${API_BASE_URL}/api/users/location-by-email`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -940,7 +939,6 @@
                     return;
                 }
                 
-                const API_BASE_URL = 'http://localhost:3001';
                 const response = await fetch(`${API_BASE_URL}/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
                 if (!response.ok) {
                     throw new Error('Failed to load friend requests');
@@ -1003,7 +1001,6 @@
         // Handle accept/reject actions
         async function respondToRequest(requestId, action) {
             try {
-                const API_BASE_URL = 'http://localhost:3001';
                 const response = await fetch(`${API_BASE_URL}/api/friend-request-response`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1134,7 +1131,6 @@
                 
                 const currentUser = JSON.parse(userString);
                 
-                const API_BASE_URL = 'http://localhost:3001';
                 const response = await fetch(`${API_BASE_URL}/api/send-friend-request`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
