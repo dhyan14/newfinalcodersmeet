@@ -85,9 +85,9 @@ class SquadChat {
       // Check if we're in production or development
       const isProduction = window.location.hostname !== 'localhost';
       
-      // Use the Render.com WebSocket server in production
+      // Use a CORS proxy as a temporary solution
       const wsServerUrl = isProduction 
-        ? 'https://chat-websocket-server-lk6w.onrender.com' // Your actual Render URL
+        ? 'https://cors-anywhere.herokuapp.com/https://chat-websocket-server-lk6w.onrender.com' 
         : window.location.origin;
       
       console.log('Using WebSocket server:', wsServerUrl);

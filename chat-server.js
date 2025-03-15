@@ -13,10 +13,25 @@ app.use((req, res, next) => {
 
 // CORS middleware - must come before routes
 app.use(cors({
-  origin: '*',
+  origin: ['https://www.dhyanjain.me', 'https://newfinalcodersmeet.vercel.app', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'OPTIONS'],
   credentials: true
 }));
+
+// Add explicit CORS headers middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://www.dhyanjain.me');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
 
 // Parse JSON body
 app.use(express.json());
@@ -27,7 +42,7 @@ const server = http.createServer(app);
 // Configure Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: ['https://www.dhyanjain.me', 'https://newfinalcodersmeet.vercel.app', 'http://localhost:3000'],
     methods: ["GET", "POST"],
     credentials: true
   },
