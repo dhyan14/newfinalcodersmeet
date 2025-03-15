@@ -94,7 +94,7 @@ class SquadChat {
       
       this.socket = io(wsServerUrl, {
         path: '/socket.io/',
-        transports: ['websocket', 'polling'], // Try both transport methods
+        transports: ['polling', 'websocket'], // Prioritize polling first, then try websocket
         reconnection: true,
         reconnectionAttempts: 5,
         timeout: 10000
