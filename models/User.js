@@ -53,7 +53,16 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
-    locationUpdatedAt: { type: Date }
+    locationUpdatedAt: { type: Date },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user'
+    },
+    progress: {
+        type: Number,
+        default: 0
+    }
 }, { 
     timestamps: true 
 });
