@@ -82,10 +82,17 @@ class SquadChat {
   // Initialize Socket.IO connection
   initializeSocket() {
     try {
-      this.socket = io("https://your-websocket-server.com", {
+      // Use a real WebSocket server URL or fall back to the current domain
+      const wsServerUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3001'  // Local development
+        : window.location.origin;  // Production (current domain)
+        
+      this.socket = io(wsServerUrl, {
         path: '/socket.io/',
-        transports: ['websocket', 'polling'],
-        reconnection: true
+        transports: ['polling', 'websocket'], // Try polling first in production
+        reconnection: true,
+        reconnectionAttempts: 3,
+        timeout: 10000
       });
 
       // Socket event handlers

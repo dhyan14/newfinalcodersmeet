@@ -30,12 +30,11 @@ app.use(function(req, res, next) {
 const io = require('socket.io')(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
-    credentials: true,
-    transports: ['polling', 'websocket']
+    methods: ["GET", "POST"]
   },
-  allowEIO3: true,
-  path: '/socket.io/'
+  transports: ['polling'], // Prioritize polling for Vercel
+  pingTimeout: 10000,
+  pingInterval: 3000
 });
 
 // Add Socket.IO connection handling with better error handling
