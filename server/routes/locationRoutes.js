@@ -6,6 +6,7 @@ const User = require('../models/userModel'); // Adjust path as needed
 // Update user's location
 router.post('/users/location-by-email', async (req, res) => {
   try {
+    console.log('Received location update request:', req.body);
     const { email, latitude, longitude } = req.body;
     
     if (!email || !latitude || !longitude) {
@@ -33,6 +34,8 @@ router.post('/users/location-by-email', async (req, res) => {
       { upsert: true, new: true }
     );
     
+    console.log('Location updated successfully for user:', user.email);
+    
     res.status(200).json({ 
       message: 'Location updated successfully',
       location: {
@@ -51,6 +54,7 @@ router.post('/users/location-by-email', async (req, res) => {
 // Get nearby users
 router.get('/users/nearby-by-email', async (req, res) => {
   try {
+    console.log('Received nearby users request:', req.query);
     const { email, latitude, longitude } = req.query;
     
     if (!email || !latitude || !longitude) {
@@ -114,6 +118,8 @@ router.get('/users/nearby-by-email', async (req, res) => {
         users
       });
     }
+    
+    console.log(`Found ${result.reduce((acc, r) => acc + r.users.length, 0)} nearby users`);
     
     res.status(200).json(result);
     
