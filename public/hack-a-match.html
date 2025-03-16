@@ -501,6 +501,42 @@
             cursor: pointer;
             display: none;
         }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            /* Show hamburger in mobile view */
+            .hamburg {
+                display: block !important; /* Use !important to override any other styles */
+            }
+            
+            /* Hide desktop navigation links */
+            nav .links {
+                display: none;
+            }
+            
+            /* Adjust container for mobile */
+            .hack-container {
+                grid-template-columns: 1fr !important;
+                padding: 10px !important;
+            }
+            
+            /* Sidebar styling for mobile */
+            .sidebar {
+                display: none;
+                position: fixed;
+                top: 80px;
+                left: 0;
+                width: 250px;
+                height: calc(100vh - 80px);
+                z-index: 1000;
+                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+                overflow-y: auto;
+            }
+            
+            .sidebar-active {
+                display: block !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -514,7 +550,7 @@
                 <div class="link"><a href="#" class="active">Hack a Match</a></div>
                 <div class="link"><a href="#" onclick="logout()">Logout</a></div>
             </div>
-            <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
+            <i class="fa-solid fa-bars hamburg" id="hamburgerBtn"></i>
         </div>
     </nav>
 
@@ -710,10 +746,10 @@
 
             // Rest of your DOMContentLoaded code...
 
-            const hamburgButton = document.querySelector('.hamburg');
-            if (hamburgButton) {
+            const hamburgerButton = document.querySelector('.hamburg');
+            if (hamburgerButton) {
                 console.log("Hamburg button found, adding click listener");
-                hamburgButton.addEventListener('click', function() {
+                hamburgerButton.addEventListener('click', function() {
                     console.log("Hamburg button clicked");
                     hamburg();
                 });
@@ -1208,6 +1244,28 @@
                 alert(error.message);
             }
         }
+
+        // Add this to your script section
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the hamburger button
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            
+            // Add click event listener
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', function() {
+                    console.log('Hamburger button clicked');
+                    const sidebar = document.querySelector('.sidebar');
+                    if (sidebar) {
+                        sidebar.classList.toggle('sidebar-active');
+                        console.log('Toggled sidebar-active class');
+                    } else {
+                        console.error('Sidebar element not found');
+                    }
+                });
+            } else {
+                console.error('Hamburger button not found');
+            }
+        });
     </script>
 </body>
 </html> 
