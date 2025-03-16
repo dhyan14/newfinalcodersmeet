@@ -233,18 +233,6 @@
 
         // Google OAuth Client ID
         const googleClientId = '212156666010-qf09rl4mhe5pc2lq5lt04323ucaje2pg.apps.googleusercontent.com';
-
-        // Test API connection
-        fetch('/api/hello')
-          .then(response => response.json())
-          .then(data => {
-            console.log('API response:', data);
-            document.body.innerHTML += `<p>API says: ${data.message}</p>`;
-          })
-          .catch(error => {
-            console.error('API error:', error);
-            document.body.innerHTML += `<p>API error: ${error.message}</p>`;
-          });
     </script>
     <script src="script.js"></script>
 </body>
