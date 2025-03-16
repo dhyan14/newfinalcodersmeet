@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "server.js",
+      "src": "index.js",
       "use": "@vercel/node"
     },
     {
@@ -10,11 +10,10 @@
       "use": "@vercel/static"
     }
   ],
-  
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server.js",
+      "dest": "index.js",
       "headers": {
         "Access-Control-Allow-Credentials": "true",
         "Access-Control-Allow-Origin": "*",
@@ -24,7 +23,7 @@
     },
     {
       "src": "/health",
-      "dest": "server.js"
+      "dest": "index.js"
     },
     {
       "handle": "filesystem"
@@ -33,5 +32,9 @@
       "src": "/(.*)",
       "dest": "public/$1"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "MONGODB_URI": "mongodb+srv://admincmeet:dhyanjain@codersmeet.ljglg.mongodb.net/codersmeet?retryWrites=true&w=majority&appName=CodersMEET"
+  }
 } 
