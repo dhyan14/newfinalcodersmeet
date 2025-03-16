@@ -1259,4 +1259,55 @@ footer {
 .mobile-theme-toggle .sun-moon {
     height: 22px;
     width: 22px;
+}
+
+/* Theme toggle in navigation */
+.theme-toggle-nav {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+}
+
+.theme-toggle-nav .switch {
+    width: 50px;
+    height: 28px;
+}
+
+.theme-toggle-nav .slider {
+    background-color: var(--primary-color);
+}
+
+.theme-toggle-nav .sun-moon {
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 3px;
+}
+
+/* Make sure the toggle aligns with the other navigation items */
+.nav-container .links {
+    display: flex;
+    align-items: center;
+}
+
+/* Adjust the mobile menu to include the theme toggle */
+.dropdown .links {
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-theme-toggle {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.mobile-theme-toggle .switch {
+    width: 50px;
+    height: 28px;
+}
+
+.mobile-theme-toggle .sun-moon {
+    height: 22px;
+    width: 22px;
 }   

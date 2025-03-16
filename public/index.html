@@ -58,7 +58,7 @@
                 <div class="link" data-aos="fade-up" data-aos-duration="1500" data-aos-delay="600">
                     <a href="signup.html" class="cta-button">Sign Up</a>
                 </div>
-                <div class="link nav-theme-toggle" data-aos="fade-up" data-aos-duration="1500" data-aos-delay="700">
+                <div class="link theme-toggle-nav" data-aos="fade-up" data-aos-duration="1500" data-aos-delay="700">
                     <label class="switch">
                         <input id="navThemeToggle" type="checkbox" />
                         <div class="slider round">
@@ -355,11 +355,9 @@
 
         // Update the theme toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
-            // Get all theme toggle checkboxes
+            // Get the theme toggle checkbox
             const navThemeToggle = document.getElementById('navThemeToggle');
             const mobileThemeToggle = document.getElementById('mobileThemeToggle');
-            const footerThemeToggle = document.getElementById('input'); // Your existing toggle
-            
             const body = document.body;
             
             // Check if user has a saved preference
@@ -368,11 +366,10 @@
                 body.classList.add('dark-theme');
                 if (navThemeToggle) navThemeToggle.checked = true;
                 if (mobileThemeToggle) mobileThemeToggle.checked = true;
-                if (footerThemeToggle) footerThemeToggle.checked = true;
             }
             
             // Function to toggle theme
-            function toggleThemeState(checked) {
+            function toggleTheme(checked) {
                 if (checked) {
                     body.classList.add('dark-theme');
                     localStorage.setItem('theme', 'dark');
@@ -381,28 +378,21 @@
                     localStorage.setItem('theme', 'light');
                 }
                 
-                // Sync all toggles
+                // Keep toggles in sync
                 if (navThemeToggle) navThemeToggle.checked = checked;
                 if (mobileThemeToggle) mobileThemeToggle.checked = checked;
-                if (footerThemeToggle) footerThemeToggle.checked = checked;
             }
             
-            // Add event listeners to all toggles
+            // Add event listeners
             if (navThemeToggle) {
                 navThemeToggle.addEventListener('change', function() {
-                    toggleThemeState(this.checked);
+                    toggleTheme(this.checked);
                 });
             }
             
             if (mobileThemeToggle) {
                 mobileThemeToggle.addEventListener('change', function() {
-                    toggleThemeState(this.checked);
-                });
-            }
-            
-            if (footerThemeToggle) {
-                footerThemeToggle.addEventListener('change', function() {
-                    toggleThemeState(this.checked);
+                    toggleTheme(this.checked);
                 });
             }
         });
