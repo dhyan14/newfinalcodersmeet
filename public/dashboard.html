@@ -226,6 +226,13 @@
             font-size: 12px;
         }
         
+        .hamburg {
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+            display: none;
+        }
+        
         @media (max-width: 768px) {
             .dashboard-layout {
                 grid-template-columns: 1fr;
@@ -233,6 +240,21 @@
             
             .sidebar {
                 display: none;
+                position: fixed;
+                top: 80px;
+                left: 0;
+                width: 250px;
+                height: calc(100vh - 80px);
+                z-index: 1000;
+                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+            }
+            
+            .sidebar-active {
+                display: block;
+            }
+            
+            .hamburg {
+                display: block;
             }
         }
     </style>
@@ -419,11 +441,8 @@
         });
         
         function hamburg() {
-            document.querySelector('.dropdown').style.display = 'block';
-        }
-        
-        function cancel() {
-            document.querySelector('.dropdown').style.display = 'none';
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('sidebar-active');
         }
     </script>
 </body>
