@@ -2253,13 +2253,15 @@
             document.getElementById('squadNameInput').value = squadData.name;
         }
         
-        // Update loadSquadMembers function to fetch actual friends
+        // Update loadSquadMembers function to better handle API responses
         async function loadSquadMembers() {
             try {
                 const currentUser = JSON.parse(localStorage.getItem('user'));
                 if (!currentUser || !currentUser.email) {
                     throw new Error('User not found or missing email');
                 }
+                
+                console.log('Current user:', currentUser);
                 
                 // First get the user data
                 const userResponse = await fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`);
@@ -2269,6 +2271,7 @@
                 }
                 
                 const userData = await userResponse.json();
+                console.log('User data from API:', userData);
                 
                 if (!userData || !userData._id) {
                     throw new Error('User ID not found in server response');
@@ -2283,6 +2286,12 @@
                 
                 const friendsData = await friendsResponse.json();
                 console.log('Friends data received:', friendsData);
+                
+                // Check if we actually got friends data in the expected format
+                if (!Array.isArray(friendsData)) {
+                    console.error('Friends data is not an array:', friendsData);
+                    throw new Error('Invalid friends data format');
+                }
                 
                 // Create squad members array with the current user as leader
                 const squadMembers = [{
@@ -2302,6 +2311,7 @@
                     
                     // Add all friends to the squad
                     friendsData.forEach((friend, index) => {
+                        console.log(`Adding friend to squad:`, friend);
                         squadMembers.push({
                             fullName: friend.fullName || friend.username || 'Friend',
                             username: friend.username || `friend${index}`,
@@ -2310,7 +2320,11 @@
                             joinedDate: joinedDates[index % joinedDates.length]
                         });
                     });
+                } else {
+                    console.log('No friends found or empty friends array');
                 }
+                
+                console.log('Final squad members array:', squadMembers);
                 
                 const membersContainer = document.querySelector('.squad-members');
                 if (membersContainer) {
