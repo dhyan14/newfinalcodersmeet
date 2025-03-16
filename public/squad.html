@@ -2253,20 +2253,23 @@
             document.getElementById('squadNameInput').value = squadData.name;
         }
         
-        // Update loadSquadMembers function to better handle API responses
+        // Update loadSquadMembers function with better error handling
         async function loadSquadMembers() {
             try {
                 const currentUser = JSON.parse(localStorage.getItem('user'));
                 if (!currentUser || !currentUser.email) {
+                    console.error('User not found or missing email in localStorage');
                     throw new Error('User not found or missing email');
                 }
                 
-                console.log('Current user:', currentUser);
+                console.log('Loading squad members for user:', currentUser.email);
                 
                 // First get the user data
+                console.log('Fetching user data from API...');
                 const userResponse = await fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`);
                 
                 if (!userResponse.ok) {
+                    console.error(`API returned ${userResponse.status}: ${userResponse.statusText}`);
                     throw new Error(`API returned ${userResponse.status}: ${userResponse.statusText}`);
                 }
                 
@@ -2274,24 +2277,21 @@
                 console.log('User data from API:', userData);
                 
                 if (!userData || !userData._id) {
+                    console.error('User ID not found in server response:', userData);
                     throw new Error('User ID not found in server response');
                 }
                 
                 // Now fetch friends using the retrieved user ID
+                console.log(`Fetching friends for user ID: ${userData._id}`);
                 const friendsResponse = await fetch(`http://localhost:5000/api/friends?userId=${userData._id}`);
                 
                 if (!friendsResponse.ok) {
+                    console.error(`Friends API returned ${friendsResponse.status}: ${friendsResponse.statusText}`);
                     throw new Error(`API returned ${friendsResponse.status}: ${friendsResponse.statusText}`);
                 }
                 
                 const friendsData = await friendsResponse.json();
                 console.log('Friends data received:', friendsData);
-                
-                // Check if we actually got friends data in the expected format
-                if (!Array.isArray(friendsData)) {
-                    console.error('Friends data is not an array:', friendsData);
-                    throw new Error('Invalid friends data format');
-                }
                 
                 // Create squad members array with the current user as leader
                 const squadMembers = [{
@@ -2303,7 +2303,7 @@
                 }];
                 
                 // Add friends to squad members
-                if (friendsData && friendsData.length > 0) {
+                if (friendsData && Array.isArray(friendsData) && friendsData.length > 0) {
                     // Define roles for squad members
                     const roles = ['Frontend Developer', 'Backend Developer', 'UI/UX Designer', 'Full Stack Developer', 'DevOps Engineer'];
                     const contributions = ['38 commits', '45 commits', '27 commits', '31 commits', '22 commits'];
@@ -2313,7 +2313,7 @@
                     friendsData.forEach((friend, index) => {
                         console.log(`Adding friend to squad:`, friend);
                         squadMembers.push({
-                            fullName: friend.fullName || friend.username || 'Friend',
+                            fullName: friend.fullName || friend.username || `Friend ${index+1}`,
                             username: friend.username || `friend${index}`,
                             role: roles[index % roles.length],
                             contributions: contributions[index % contributions.length],
@@ -2321,7 +2321,7 @@
                         });
                     });
                 } else {
-                    console.log('No friends found or empty friends array');
+                    console.warn('No friends found or empty friends array:', friendsData);
                 }
                 
                 console.log('Final squad members array:', squadMembers);
@@ -2365,12 +2365,18 @@
             }
         }
         
-        // Update the loadFallbackMembers function to be more consistent
+        // Update the loadFallbackMembers function to be more informative
         function loadFallbackMembers() {
+            console.warn('Using fallback squad members data - API call failed');
+            
+            // Get current user from localStorage
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            const userName = currentUser ? (currentUser.fullName || currentUser.username || 'You') : 'You';
+            
             // Fallback to mock data on error
             const mockMembers = [
                 { 
-                    fullName: "You (Fallback)", 
+                    fullName: userName + " (Leader)", 
                     username: "you",
                     role: "Squad Leader", 
                     contributions: "42 commits", 
@@ -2429,6 +2435,20 @@
                     `;
                     membersContainer.appendChild(memberCard);
                 });
+                
+                // Add a message indicating these are mock users
+                const mockMessage = document.createElement('div');
+                mockMessage.style.gridColumn = '1 / -1';
+                mockMessage.style.padding = '10px';
+                mockMessage.style.marginTop = '15px';
+                mockMessage.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
+                mockMessage.style.borderRadius = '5px';
+                mockMessage.style.textAlign = 'center';
+                mockMessage.innerHTML = `
+                    <p><i class="fas fa-exclamation-triangle"></i> Showing mock squad members because API call failed</p>
+                    <p>Check console for details</p>
+                `;
+                membersContainer.appendChild(mockMessage);
             }
         }
 
