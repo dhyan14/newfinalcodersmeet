@@ -2286,7 +2286,7 @@
                 
                 // Create squad members array with the current user as leader
                 const squadMembers = [{
-                    fullName: userData.fullName || 'You',
+                    fullName: userData.fullName || currentUser.username || 'You',
                     username: userData.username || 'you',
                     role: 'Squad Leader',
                     contributions: '42 commits',
@@ -2295,12 +2295,13 @@
                 
                 // Add friends to squad members
                 if (friendsData && friendsData.length > 0) {
-                    // Add up to 5 friends to the squad
+                    // Define roles for squad members
                     const roles = ['Frontend Developer', 'Backend Developer', 'UI/UX Designer', 'Full Stack Developer', 'DevOps Engineer'];
                     const contributions = ['38 commits', '45 commits', '27 commits', '31 commits', '22 commits'];
                     const joinedDates = ['2 months ago', '3 months ago', '1 month ago', '2 weeks ago', '1 month ago'];
                     
-                    friendsData.slice(0, 5).forEach((friend, index) => {
+                    // Add all friends to the squad
+                    friendsData.forEach((friend, index) => {
                         squadMembers.push({
                             fullName: friend.fullName || friend.username || 'Friend',
                             username: friend.username || `friend${index}`,
