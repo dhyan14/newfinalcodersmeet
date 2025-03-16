@@ -58,11 +58,6 @@
                 <div class="link" data-aos="fade-up" data-aos-duration="1500" data-aos-delay="600">
                     <a href="signup.html" class="cta-button">Sign Up</a>
                 </div>
-                <div class="link theme-toggle" data-aos="fade-up" data-aos-duration="1500" data-aos-delay="700">
-                    <button id="theme-btn" onclick="toggleTheme()">
-                        <i class="fas fa-sun"></i>
-                    </button>
-                </div>
             </div>
             <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
         </div>
@@ -74,9 +69,6 @@
                 <a href="#">Contact Us</a>
                 <a href="login.html">Login</a>
                 <a href="signup.html">Sign Up</a>
-                <button id="theme-btn-mobile" onclick="toggleTheme()">
-                    <i class="fas fa-sun"></i>
-                </button>
                 <i class="fa-solid fa-xmark cancel" onclick="cancel()"></i>
             </div>
         </div>
@@ -230,18 +222,18 @@
         // Theme toggle functionality
         function toggleTheme() {
             const body = document.body;
-            const themeBtn = document.getElementById('theme-btn');
-            const themeBtnMobile = document.getElementById('theme-btn-mobile');
+            const themeToggleFloat = document.getElementById('themeToggleFloat');
+            const icon = themeToggleFloat.querySelector('i');
             
             body.classList.toggle('dark-theme');
             
-            // Update button icons
+            // Update icon
             if (body.classList.contains('dark-theme')) {
-                themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
-                themeBtnMobile.innerHTML = '<i class="fas fa-moon"></i>';
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
             } else {
-                themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-                themeBtnMobile.innerHTML = '<i class="fas fa-sun"></i>';
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
             }
             
             // Save theme preference
@@ -252,8 +244,6 @@
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-theme');
-            document.getElementById('theme-btn').innerHTML = '<i class="fas fa-moon"></i>';
-            document.getElementById('theme-btn-mobile').innerHTML = '<i class="fas fa-moon"></i>';
         }
 
         // Google OAuth Client ID
