@@ -1225,4 +1225,38 @@ footer {
         position: static;
         margin: 20px auto;
     }
+}
+
+/* Navigation theme toggle */
+.nav-theme-toggle {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+}
+
+.nav-theme-toggle .switch {
+    width: 50px;
+    height: 28px;
+}
+
+.nav-theme-toggle .sun-moon {
+    height: 22px;
+    width: 22px;
+}
+
+/* Mobile theme toggle */
+.mobile-theme-toggle {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.mobile-theme-toggle .switch {
+    width: 50px;
+    height: 28px;
+}
+
+.mobile-theme-toggle .sun-moon {
+    height: 22px;
+    width: 22px;
 }   
