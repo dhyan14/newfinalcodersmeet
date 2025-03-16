@@ -29,7 +29,7 @@ app.options('*', cors(corsOptions));
 
 // Other middleware
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Add better error logging
 app.use((req, res, next) => {
@@ -575,5 +575,27 @@ app.get('/api/test-db', async (req, res) => {
     }
 });
 
-// Just keep the export
+// For Vercel serverless deployment
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  const server = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+
+  // Socket.io setup (only for local development)
+  const io = require('socket.io')(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST']
+    }
+  });
+
+  // Socket.io event handlers
+  io.on('connection', (socket) => {
+    console.log('New client connected');
+    // Add your socket event handlers here
+  });
+}
+
+// Export for Vercel
 module.exports = app; 
