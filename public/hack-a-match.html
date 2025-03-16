@@ -223,6 +223,10 @@
                 grid-template-rows: auto auto auto;
             }
             
+            .hamburg {
+                display: block;
+            }
+            
             .sidebar {
                 display: none;
                 position: fixed;
@@ -232,6 +236,7 @@
                 height: calc(100vh - 80px);
                 z-index: 1000;
                 box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+                overflow-y: auto;
             }
             
             .sidebar-active {
@@ -488,6 +493,14 @@
             transform: scale(1.1);
             background: var(--secondary-color);
         }
+
+        /* Add this CSS to the style section */
+        .hamburg {
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -696,6 +709,17 @@
             });
 
             // Rest of your DOMContentLoaded code...
+
+            const hamburgButton = document.querySelector('.hamburg');
+            if (hamburgButton) {
+                console.log("Hamburg button found, adding click listener");
+                hamburgButton.addEventListener('click', function() {
+                    console.log("Hamburg button clicked");
+                    hamburg();
+                });
+            } else {
+                console.error("Hamburg button not found");
+            }
         });
 
         // Update the beginning of loadNearbyUsers function
@@ -941,8 +965,14 @@
 
         // Mobile menu functions
         function hamburg() {
+            console.log("Hamburg function called"); // Debug log
             const sidebar = document.querySelector('.sidebar');
-            sidebar.classList.toggle('sidebar-active');
+            if (sidebar) {
+                sidebar.classList.toggle('sidebar-active');
+                console.log("Toggled sidebar-active class"); // Debug log
+            } else {
+                console.error("Sidebar element not found");
+            }
         }
         
         function cancel() {
