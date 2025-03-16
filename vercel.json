@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.js",
+      "src": "server.js",
       "use": "@vercel/node"
     },
     {
@@ -10,10 +10,11 @@
       "use": "@vercel/static"
     }
   ],
+  
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "index.js",
+      "dest": "server.js",
       "headers": {
         "Access-Control-Allow-Credentials": "true",
         "Access-Control-Allow-Origin": "*",
@@ -23,7 +24,7 @@
     },
     {
       "src": "/health",
-      "dest": "index.js"
+      "dest": "server.js"
     },
     {
       "handle": "filesystem"
