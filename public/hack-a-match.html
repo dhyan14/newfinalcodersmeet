@@ -1284,6 +1284,34 @@
                 });
             }
         });
+
+        // Theme toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved theme preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                document.getElementById('theme-switch-checkbox').checked = true;
+            }
+            
+            // Add event listener to theme switch
+            const themeSwitch = document.getElementById('theme-switch-checkbox');
+            if (themeSwitch) {
+                themeSwitch.addEventListener('change', function() {
+                    const body = document.body;
+                    body.classList.toggle('dark-theme');
+                    
+                    // Save theme preference
+                    localStorage.setItem('theme', body.classList.contains('dark-theme') ? 'dark' : 'light');
+                });
+            }
+        });
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
     </script>
 </body>
 </html> 
