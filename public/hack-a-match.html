@@ -7,6 +7,54 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Make sure these are at the top of your style section */
+        :root {
+            --bg-color: #0d1117;
+            --nav-bg: #161b22;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
+            --secondary-text: #8b949e;
+            --link-color: #58a6ff;
+            --primary-color: #077b32;
+            --card-bg: #1a1a1a;
+        }
+        
+        /* Basic hamburger styling */
+        .hamburg {
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+            display: none;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .hamburg {
+                display: block !important;
+            }
+            
+            nav .links {
+                display: none;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .sidebar.sidebar-active {
+                display: block !important;
+                position: fixed;
+                top: 80px;
+                left: 0;
+                width: 250px;
+                height: calc(100vh - 80px);
+                z-index: 1000;
+                background: var(--nav-bg);
+                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+                overflow-y: auto;
+            }
+        }
+
         .hack-container {
             display: grid;
             grid-template-columns: 280px 1fr 300px;
@@ -492,50 +540,6 @@
         .user-action-btn:hover {
             transform: scale(1.1);
             background: var(--secondary-color);
-        }
-
-        /* Add this CSS to the style section */
-        .hamburg {
-            font-size: 24px;
-            color: var(--text-color);
-            cursor: pointer;
-            display: none;
-        }
-
-        /* Mobile responsiveness */
-        @media (max-width: 768px) {
-            /* Show hamburger in mobile view */
-            .hamburg {
-                display: block !important; /* Use !important to override any other styles */
-            }
-            
-            /* Hide desktop navigation links */
-            nav .links {
-                display: none;
-            }
-            
-            /* Adjust container for mobile */
-            .hack-container {
-                grid-template-columns: 1fr !important;
-                padding: 10px !important;
-            }
-            
-            /* Sidebar styling for mobile */
-            .sidebar {
-                display: none;
-                position: fixed;
-                top: 80px;
-                left: 0;
-                width: 250px;
-                height: calc(100vh - 80px);
-                z-index: 1000;
-                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-                overflow-y: auto;
-            }
-            
-            .sidebar-active {
-                display: block !important;
-            }
         }
     </style>
 </head>
@@ -1245,25 +1249,17 @@
             }
         }
 
-        // Add this to your script section
+        // Place this at the end of your body, just before the closing </body> tag
         document.addEventListener('DOMContentLoaded', function() {
-            // Get the hamburger button
-            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            // Simple hamburger toggle
+            const hamburgerBtn = document.querySelector('.hamburg');
+            const sidebar = document.querySelector('.sidebar');
             
-            // Add click event listener
-            if (hamburgerBtn) {
+            if (hamburgerBtn && sidebar) {
                 hamburgerBtn.addEventListener('click', function() {
-                    console.log('Hamburger button clicked');
-                    const sidebar = document.querySelector('.sidebar');
-                    if (sidebar) {
-                        sidebar.classList.toggle('sidebar-active');
-                        console.log('Toggled sidebar-active class');
-                    } else {
-                        console.error('Sidebar element not found');
-                    }
+                    sidebar.classList.toggle('sidebar-active');
+                    console.log('Hamburger clicked, sidebar toggled');
                 });
-            } else {
-                console.error('Hamburger button not found');
             }
         });
     </script>
