@@ -2264,9 +2264,12 @@
                 
                 console.log('Loading squad members for user:', currentUser.email);
                 
+                // Replace localhost:5000 with your actual backend URL
+                const API_BASE_URL = 'https://your-backend-url.vercel.app'; // Update this to your actual backend URL
+                
                 // First get the user data
                 console.log('Fetching user data from API...');
-                const userResponse = await fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`);
+                const userResponse = await fetch(`${API_BASE_URL}/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`);
                 
                 if (!userResponse.ok) {
                     console.error(`API returned ${userResponse.status}: ${userResponse.statusText}`);
@@ -2283,7 +2286,7 @@
                 
                 // Now fetch friends using the retrieved user ID
                 console.log(`Fetching friends for user ID: ${userData._id}`);
-                const friendsResponse = await fetch(`http://localhost:5000/api/friends?userId=${userData._id}`);
+                const friendsResponse = await fetch(`${API_BASE_URL}/api/friends?userId=${userData._id}`);
                 
                 if (!friendsResponse.ok) {
                     console.error(`Friends API returned ${friendsResponse.status}: ${friendsResponse.statusText}`);
