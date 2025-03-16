@@ -7,6 +7,31 @@
     <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
     <link rel="stylesheet" href="style.css">
     <title>Coders Portfolio</title>
+    <style>
+        .theme-toggle-float {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--primary-color, #077b32);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-toggle-float:hover {
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+    </style>
 </head>
 <body>
     <nav>
@@ -233,7 +258,44 @@
 
         // Google OAuth Client ID
         const googleClientId = '212156666010-qf09rl4mhe5pc2lq5lt04323ucaje2pg.apps.googleusercontent.com';
+
+        // Add this to your existing script section
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup floating theme toggle
+            const themeToggleFloat = document.getElementById('themeToggleFloat');
+            const body = document.body;
+            
+            if (themeToggleFloat) {
+                // Set initial icon based on current theme
+                const icon = themeToggleFloat.querySelector('i');
+                if (body.classList.contains('dark-theme')) {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                } else {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                }
+                
+                // Add click event
+                themeToggleFloat.addEventListener('click', function() {
+                    toggleTheme();
+                    
+                    // Update floating button icon
+                    const floatIcon = themeToggleFloat.querySelector('i');
+                    if (body.classList.contains('dark-theme')) {
+                        floatIcon.classList.remove('fa-sun');
+                        floatIcon.classList.add('fa-moon');
+                    } else {
+                        floatIcon.classList.remove('fa-moon');
+                        floatIcon.classList.add('fa-sun');
+                    }
+                });
+            }
+        });
     </script>
     <script src="script.js"></script>
+    <div class="theme-toggle" id="themeToggleFloat">
+        <i class="fas fa-moon"></i>
+    </div>
 </body>
 </html>
