@@ -1252,6 +1252,9 @@
         let peerConnections = {}; // Store WebRTC peer connections
         let roomId = null; // Room ID for the call
 
+        // Global configuration at the top of your script
+        const API_BASE_URL = 'https://newfinalcodersmeet.vercel.app'; // Your Vercel deployment URL
+
         // Function to get initials from name
         function getInitials(name) {
             if (!name) return '?';
@@ -2464,6 +2467,7 @@
             alert(`Viewing profile of ${username}`);
         }
 
+        // Update loadOnlineFriends function
         function loadOnlineFriends() {
             // Get current user from localStorage
             const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -2474,7 +2478,7 @@
             }
             
             // We need to fetch the user's ID from the server since it's not in localStorage
-            fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
+            fetch(`${API_BASE_URL}/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Failed to fetch user data');
@@ -2489,7 +2493,7 @@
                     const userId = userData._id;
                     
                     // Now fetch friends using the retrieved user ID
-                    return fetch(`http://localhost:5000/api/friends?userId=${userId}`)
+                    return fetch(`${API_BASE_URL}/api/friends?userId=${userId}`)
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error('Failed to fetch friends');
@@ -2581,6 +2585,7 @@
             renderOnlineFriends(mockFriends);
         }
         
+        // Update loadChatMessages function
         function loadChatMessages() {
             // Get current user from localStorage
             const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -2590,7 +2595,7 @@
             }
             
             // Fetch squad chat messages from the server
-            fetch(`http://localhost:5000/api/squad-messages`)
+            fetch(`${API_BASE_URL}/api/squad-messages`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Failed to fetch chat messages');
@@ -2689,10 +2694,7 @@
             const configuration = {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                    { urls: 'stun:stun3.l.google.com:19302' },
-                    { urls: 'stun:stun4.l.google.com:19302' }
+                    { urls: 'stun:stun1.l.google.com:19302' }
                 ]
             };
             
@@ -2877,7 +2879,7 @@
             }
             
             // Search for users by name or email
-            fetch(`http://localhost:5000/api/search-users?term=${encodeURIComponent(searchTerm)}`)
+            fetch(`${API_BASE_URL}/api/search-users?term=${encodeURIComponent(searchTerm)}`)
                 .then(response => {
                     if (!response.ok) throw new Error('Failed to search users');
                     return response.json();
@@ -2951,7 +2953,7 @@
                 console.log('Initializing socket connection...');
                 
                 // Connect to Socket.IO server with better error handling and reconnection logic
-                socket = io('http://localhost:5000', {
+                socket = io(API_BASE_URL, {
                     reconnection: true,
                     reconnectionAttempts: 10,
                     reconnectionDelay: 1000,
