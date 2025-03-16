@@ -828,18 +828,17 @@ section{
     }
 }
 
-/* Theme toggle container positioning */
+/* Update the theme toggle container positioning */
 .theme-toggle-container {
   position: fixed;
   right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 100px; /* Position it below the navigation bar */
   z-index: 1000;
   transition: all 0.3s ease;
 }
 
 .theme-toggle-container:hover {
-  transform: translateY(-50%) scale(1.1);
+  transform: scale(1.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
@@ -1136,4 +1135,94 @@ section{
     -webkit-transform: translateX(26px) rotate(360deg);
     transform: translateX(26px) rotate(360deg);
   }
+}
+
+/* Footer styles */
+footer {
+    background-color: var(--nav-bg);
+    padding: 40px 0 20px;
+    margin-top: 50px;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    position: relative;
+}
+
+.footer-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 30px;
+}
+
+.footer-logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.footer-logo span {
+    color: var(--primary-color);
+}
+
+.footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-links a {
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.footer-links a:hover {
+    color: var(--primary-color);
+}
+
+.footer-social {
+    display: flex;
+    gap: 15px;
+}
+
+.footer-social a {
+    color: var(--text-color);
+    font-size: 1.2rem;
+    transition: color 0.3s;
+}
+
+.footer-social a:hover {
+    color: var(--primary-color);
+}
+
+.footer-theme-toggle {
+    position: absolute;
+    top: 0;
+    right: 20px;
+}
+
+.footer-copyright {
+    text-align: center;
+    color: var(--secondary-text);
+    font-size: 0.9rem;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .footer-content {
+        flex-direction: column;
+        gap: 20px;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .footer-theme-toggle {
+        position: static;
+        margin: 20px auto;
+    }
 }   
