@@ -22,19 +22,14 @@
       }
     },
     {
-      "src": "/health",
-      "dest": "index.js"
-    },
-    {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/$1"
+      "dest": "server.js"
     }
   ],
   "env": {
-    "NODE_ENV": "production",
-    "MONGODB_URI": "mongodb+srv://admincmeet:dhyanjain@codersmeet.ljglg.mongodb.net/codersmeet?retryWrites=true&w=majority&appName=CodersMEET"
+    "NODE_ENV": "production"
   }
 } 

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 // Import models
@@ -11,6 +12,9 @@ const FriendRequest = require('./models/FriendRequest');
 const SquadChat = require('./models/SquadChat');
 
 const app = express();
+
+// Near the top of your file, add this:
+const isVercel = process.env.VERCEL === '1';
 
 // Update CORS configuration
 const corsOptions = {
@@ -512,9 +516,16 @@ app.get('/*.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
-// Catch-all route SHOULD BE LAST
+// Update your catch-all route to work better with Vercel:
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  // Check if the request is for a static file
+  const filePath = path.join(__dirname, 'public', req.path);
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    return res.sendFile(filePath);
+  }
+  
+  // Otherwise send the index.html
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Error handler
@@ -575,8 +586,8 @@ app.get('/api/test-db', async (req, res) => {
     }
 });
 
-// For Vercel serverless deployment
-if (process.env.NODE_ENV !== 'production') {
+// Keep your Socket.io code only for local development
+if (!isVercel) {
   const PORT = process.env.PORT || 5000;
   const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
