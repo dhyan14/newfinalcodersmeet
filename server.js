@@ -12,12 +12,20 @@ const SquadChat = require('./models/SquadChat');
 
 const app = express();
 
-// Configure CORS
-app.use(cors({
-  origin: ['https://www.dhyanjain.me', 'https://dhyanjain.me'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-}));
+// Update CORS configuration
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production' 
+        ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app', 'https://your-frontend-domain.vercel.app']
+        : ['http://localhost:3001', 'http://localhost:3000'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    optionsSuccessStatus: 204,
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Other middleware
 app.use(express.json());
