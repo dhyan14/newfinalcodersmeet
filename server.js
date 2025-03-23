@@ -10,130 +10,199 @@ const User = require('./models/User');
 const Message = require('./models/Message');
 const FriendRequest = require('./models/FriendRequest');
 const SquadChat = require('./models/SquadChat');
+const Squad = require('./models/Squad');
 
 // Create Express app and HTTP server
 const app = express();
+
+// Middleware setup - order is important
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`
+    );
+  });
+  next();
+});
+
+// Create HTTP server after middleware setup
 const server = http.createServer(app);
 
-// Add this near the top of your file
-const socketIoOptions = {
+// MongoDB Connection
+const connectToDatabase = async () => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      return; // Already connected
+    }
+    
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/codersmeet';
+    await mongoose.connect(mongoURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000
+    });
+    
+    console.log('Connected to MongoDB');
+    
+    // Ensure indexes are created
+    await User.collection.createIndex({ location: '2dsphere' });
+    await User.collection.createIndex({ username: 'text', fullName: 'text', skills: 'text' });
+    
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
+  }
+};
+
+// Initialize Socket.IO after server creation
+const io = require('socket.io')(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
     credentials: true
   },
-  transports: ['polling', 'websocket'],
   path: '/socket.io/',
-  allowEIO3: true, // Allow Engine.IO 3 compatibility
-  pingTimeout: 60000, // Increase ping timeout
-  pingInterval: 25000 // Increase ping interval
-};
+  transports: ['polling', 'websocket'],
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  connectTimeout: 45000
+});
 
-// Initialize Socket.io with these options
-const io = require('socket.io')(server, socketIoOptions);
+// Socket.IO error handling
+io.engine.on("connection_error", (err) => {
+  console.error("Socket.IO connection error:", err);
+});
 
-// Update CORS configuration
-const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app']
-        : ['http://localhost:5000', 'http://localhost:3000'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-    optionsSuccessStatus: 204,
-    allowedHeaders: ['Content-Type', 'Authorization']
-};
+// API Router setup
+const apiRouter = express.Router();
+app.use('/api', apiRouter);
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-
-// Other middleware
-app.use(express.json());
-app.use(express.static('public', {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
-    } else if (path.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    } else if (path.endsWith('.html')) {
-      res.setHeader('Content-Type', 'text/html');
-    } else if (path.endsWith('.json')) {
-      res.setHeader('Content-Type', 'application/json');
+// API Routes
+apiRouter.get('/server-info', (req, res) => {
+  res.json({
+    status: 'ok',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    socketEnabled: true,
+    version: '1.0.0',
+    features: {
+      geolocation: true,
+      chat: true,
+      squads: true
     }
+  });
+});
+
+// Squad routes
+apiRouter.get('/squad/:squadId/members', async (req, res, next) => {
+  try {
+    const { squadId } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(squadId)) {
+      return res.status(400).json({ error: 'Invalid squad ID' });
+    }
+
+    const squad = await Squad.findById(squadId)
+      .populate('members.user', 'username fullName email skills')
+      .lean();
+    
+    if (!squad) {
+      return res.status(404).json({ error: 'Squad not found' });
+    }
+
+    res.json(squad.members);
+  } catch (error) {
+    next(error);
   }
-}));
-
-// Add better error logging
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
-    next();
 });
 
-// Add explicit MIME type handling
-app.use((req, res, next) => {
-  const url = req.url;
-  
-  if (url.endsWith('.js')) {
-    res.setHeader('Content-Type', 'application/javascript');
-  } else if (url.endsWith('.css')) {
-    res.setHeader('Content-Type', 'text/css');
-  } else if (url.endsWith('.html')) {
-    res.setHeader('Content-Type', 'text/html');
-  } else if (url.endsWith('.json')) {
-    res.setHeader('Content-Type', 'application/json');
+// User routes
+apiRouter.get('/users/search', async (req, res, next) => {
+  try {
+    const { q, lat, lng, distance = 10 } = req.query;
+    let query = {};
+    
+    // Text search
+    if (q) {
+      query.$or = [
+        { username: new RegExp(q, 'i') },
+        { fullName: new RegExp(q, 'i') },
+        { skills: new RegExp(q, 'i') }
+      ];
+    }
+
+    // Location search
+    if (lat && lng) {
+      const coords = [parseFloat(lng), parseFloat(lat)];
+      if (!isNaN(coords[0]) && !isNaN(coords[1])) {
+        query.location = {
+          $near: {
+            $geometry: {
+              type: "Point",
+              coordinates: coords
+            },
+            $maxDistance: distance * 1000
+          }
+        };
+      }
+    }
+
+    const users = await User.find(query)
+      .select('username fullName email location skills')
+      .limit(20)
+      .lean();
+
+    res.json(users);
+  } catch (error) {
+    next(error);
   }
-  
-  next();
 });
 
-// MongoDB Connection
-let isConnected = false;
-
-const connectToDatabase = async () => {
-    if (isConnected) return;
-
-    try {
-        console.log('Connecting to MongoDB...');
-        await mongoose.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 10000
-        });
-        isConnected = true;
-        console.log('MongoDB Connected');
-    } catch (error) {
-        console.error('MongoDB connection error:', error);
-        isConnected = false;
-        throw error;
+apiRouter.post('/users/location', async (req, res, next) => {
+  try {
+    const { userId, latitude, longitude } = req.body;
+    
+    if (!userId || !latitude || !longitude) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
-};
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Status endpoint
-app.get('/api/status', async (req, res) => {
-    try {
-        await connectToDatabase();
-        res.json({
-            status: 'ok',
-            server: true,
-            database: isConnected,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
     }
+
+    const coords = [parseFloat(longitude), parseFloat(latitude)];
+    if (isNaN(coords[0]) || isNaN(coords[1])) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, {
+      location: {
+        type: "Point",
+        coordinates: coords
+      },
+      locationUpdatedAt: new Date()
+    }, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'Location updated successfully' });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Login route with better error handling
-app.post('/api/login', async (req, res) => {
+apiRouter.post('/login', async (req, res) => {
     try {
         await connectToDatabase();
         const { email, password } = req.body;
@@ -166,7 +235,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Signup route with validation
-app.post('/api/signup', async (req, res) => {
+apiRouter.post('/signup', async (req, res) => {
     try {
         await connectToDatabase();
         const { fullName, email, password, username } = req.body;
@@ -220,7 +289,7 @@ app.post('/api/signup', async (req, res) => {
 });
 
 // Add this to your server.js file - Username availability check endpoint
-app.post('/api/check-username', async (req, res) => {
+apiRouter.post('/check-username', async (req, res) => {
     try {
         await connectToDatabase();
         const { username } = req.body;
@@ -248,7 +317,7 @@ app.post('/api/check-username', async (req, res) => {
 });
 
 // Get user by ID
-app.get('/api/users/:id', async (req, res) => {
+apiRouter.get('/users/:id', async (req, res) => {
     try {
         await connectToDatabase();
         const userId = req.params.id;
@@ -289,7 +358,7 @@ app.get('/*.html', (req, res) => {
 });
 
 // Get user by email
-app.get('/api/user-by-email', async (req, res) => {
+apiRouter.get('/user-by-email', async (req, res) => {
   try {
     await connectToDatabase();
     const { email } = req.query;
@@ -311,7 +380,7 @@ app.get('/api/user-by-email', async (req, res) => {
 });
 
 // Get friends by user ID
-app.get('/api/friends', async (req, res) => {
+apiRouter.get('/friends', async (req, res) => {
   try {
     await connectToDatabase();
     const { userId } = req.query;
@@ -337,7 +406,7 @@ app.get('/api/friends', async (req, res) => {
 });
 
 // Search users
-app.get('/api/search-users', async (req, res) => {
+apiRouter.get('/search-users', async (req, res) => {
   try {
     await connectToDatabase();
     const { term } = req.query;
@@ -381,91 +450,28 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Error handler
-app.use((err, req, res, next) => {
-    console.error('Error:', err);
-    
-    // Handle specific errors
-    if (err.name === 'MongoError' || err.name === 'MongooseError') {
-        return res.status(500).json({
-            status: 'error',
-            message: 'Database error occurred',
-            details: process.env.NODE_ENV === 'development' ? err.message : undefined
-        });
-    }
-    
-    if (err.name === 'ValidationError') {
-        return res.status(400).json({
-            status: 'error',
-            message: 'Validation failed',
-            details: err.message
-        });
-    }
-    
-    // Default error response
-    res.status(500).json({
-        status: 'error',
-        message: err.message || 'Internal server error',
-        timestamp: new Date().toISOString()
-    });
+// Add this before your routes
+app.use((req, res, next) => {
+  // Log all requests
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
 });
 
-// Set up Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-  
-  // Join a specific room (squad room)
-  socket.on('join-squad-room', async (squadId) => {
-    socket.join(`squad-${squadId}`);
-    console.log(`User ${socket.id} joined squad room: squad-${squadId}`);
-    
-    try {
-      // Fetch recent messages for this squad
-      const recentMessages = await SquadChat.find({ squadId })
-        .sort({ timestamp: -1 })
-        .limit(50)
-        .populate('sender', 'username')
-        .lean();
-      
-      // Send previous messages to the client
-      socket.emit('previous-messages', recentMessages.reverse());
-    } catch (error) {
-      console.error('Error fetching previous messages:', error);
-    }
-  });
-  
-  // Handle chat messages for squad
-  socket.on('squad-message', async (data) => {
-    console.log('Squad message received:', data);
-    
-    try {
-      // Save message to database
-      const chatMessage = new SquadChat({
-        squadId: data.squadId,
-        sender: data.senderId, // Make sure client sends this
-        senderName: data.sender,
-        content: data.message,
-        timestamp: new Date()
-      });
-      
-      await chatMessage.save();
-      console.log('Message saved to database');
-      
-      // Broadcast to all clients in the room
-      io.to(`squad-${data.squadId}`).emit('squad-message', data);
-    } catch (error) {
-      console.error('Error saving chat message:', error);
-    }
-  });
-  
-  // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+// Add this after your routes
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Not Found', path: req.path });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message,
+    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
 // Update the GET endpoint to retrieve messages with "since" parameter
-app.get('/api/squad-messages', async (req, res) => {
+apiRouter.get('/squad-messages', async (req, res) => {
   try {
     console.log('GET /api/squad-messages - Query:', req.query);
     await connectToDatabase();
@@ -513,7 +519,7 @@ app.get('/api/squad-messages', async (req, res) => {
 });
 
 // Update the POST endpoint for messages
-app.post('/api/squad-messages', async (req, res) => {
+apiRouter.post('/squad-messages', async (req, res) => {
   try {
     console.log('POST /api/squad-messages - Body:', req.body);
     await connectToDatabase();
@@ -546,10 +552,12 @@ app.post('/api/squad-messages', async (req, res) => {
     
     // Emit to socket clients if needed
     if (io) {
-      io.to(`squad-${squadId}`).emit('squad-message', {
+      io.to(`squad_${squadId}`).emit('new-message', {
+        id: chatMessage._id,
         squadId,
         message,
         sender,
+        senderName: chatMessage.senderName,
         timestamp: chatMessage.timestamp
       });
     }
@@ -570,25 +578,55 @@ app.post('/api/squad-messages', async (req, res) => {
   }
 });
 
-// Add a server info endpoint for debugging
-app.get('/api/server-info', (req, res) => {
-  res.json({
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString(),
-    hostname: req.hostname,
-    headers: req.headers,
-    nodeVersion: process.version,
-    memoryUsage: process.memoryUsage(),
-    uptime: process.uptime()
-  });
+// Update the error handling middleware
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ 
+      error: 'API endpoint not found', 
+      path: req.path,
+      method: req.method 
+    });
+  } else {
+    next();
+  }
 });
 
-// For local development
+// Add better request logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`
+    );
+  });
+  next();
+});
+
+// Server startup
+const startServer = async () => {
+  try {
+    // Connect to MongoDB first
+    await connectToDatabase();
+    
+    // Then start the server
+    const port = process.env.PORT || 3000;
+    server.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
 if (process.env.NODE_ENV !== 'production') {
-  server.listen(process.env.PORT || 3000, () => {
-    console.log(`Server running on port ${process.env.PORT || 3000}`);
+  startServer().catch(error => {
+    console.error('Server startup failed:', error);
+    process.exit(1);
   });
 }
 
-// For Vercel, export the Express app
+// Export for production
 module.exports = app; 

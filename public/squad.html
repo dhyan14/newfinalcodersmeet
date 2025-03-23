@@ -9,6 +9,7 @@
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/squad-chat.js"></script>
+    <script src="/js/config.js"></script>
     <style>
         .squad-container {
             display: grid;
@@ -197,61 +198,106 @@
 
         /* Chat Container */
         .chat-container {
-            height: 500px;
             display: flex;
             flex-direction: column;
+            height: 400px;
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .chat-status.success { 
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+
+        .chat-status.error { 
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
         }
 
         .chat-messages {
             flex: 1;
             overflow-y: auto;
             padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            background: var(--bg-color);
         }
 
         .message {
+            margin-bottom: 12px;
             max-width: 70%;
-            padding: 10px 15px;
-            border-radius: 8px;
+            padding: 8px 12px;
+            border-radius: 12px;
             position: relative;
         }
 
         .message.sent {
+            margin-left: auto;
             background: var(--primary-color);
             color: white;
-            align-self: flex-end;
+            border-bottom-right-radius: 4px;
         }
 
         .message.received {
-            background: var(--border-color);
-            color: var(--text-color);
-            align-self: flex-start;
+            margin-right: auto;
+            background: var(--card-bg);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.system {
+            max-width: 100%;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-style: italic;
+            color: var(--secondary-text);
         }
 
         .message-sender {
             font-size: 0.8rem;
-            margin-bottom: 3px;
             font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .message-content {
+            word-break: break-word;
+            line-height: 1.4;
         }
 
         .message-time {
             font-size: 0.7rem;
-            margin-top: 3px;
-            text-align: right;
-            opacity: 0.8;
+            opacity: 0.7;
+            margin-top: 4px;
         }
 
         .chat-input {
             display: flex;
-            padding: 10px;
+            padding: 15px;
+            background: var(--card-bg);
             border-top: 1px solid var(--border-color);
+            gap: 10px;
         }
 
         .chat-input input {
             flex: 1;
-            padding: 10px;
+            padding: 8px 12px;
             border: 1px solid var(--border-color);
             border-radius: 20px;
             background: var(--bg-color);
@@ -259,14 +305,17 @@
         }
 
         .chat-input button {
+            padding: 8px 20px;
             background: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            margin-left: 10px;
+            border-radius: 20px;
             cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .chat-input button:hover {
+            background: var(--secondary-color);
         }
 
         /* Video Call Section */
@@ -1014,6 +1063,20 @@
             padding: 20px;
             height: calc(100vh - 160px);
         }
+
+        /* Add this in your sidebar or main content area */
+        .nearby-coders-section {
+            margin-top: 20px;
+        }
+
+        .search-container {
+            margin-bottom: 10px;
+        }
+
+        .coders-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -1087,17 +1150,31 @@
                     <div class="ranking-value">Gold (7,500 points)</div>
                 </div>
             </div>
+
+            <div class="nearby-coders-section">
+                <div class="section-title">
+                    <i class="fas fa-map-marker-alt"></i> Nearby Coders
+                </div>
+                <div class="search-container">
+                    <input type="text" id="skillSearch" placeholder="Search by skills...">
+                </div>
+                <div id="nearbyCodersList" class="coders-list">
+                    <!-- Coders will be loaded here -->
+                </div>
+            </div>
         </div>
 
         <!-- Main Content Area -->
         <div class="main-content">
             <div class="section-title">
                 <i class="fas fa-users"></i> Squad Members
+                <button id="inviteButton" class="invite-btn">
+                    <i class="fas fa-user-plus"></i> Invite
+                </button>
             </div>
             <div class="squad-members" id="squadMembersList">
-                <!-- Member cards will be populated here -->
+                <!-- Members will be loaded here -->
             </div>
-
 
             <div class="chat-container">
                 <div class="chat-header">
@@ -1105,19 +1182,26 @@
                         <i class="fas fa-comments"></i>
                         Squad Chat
                     </div>
-                    <div id="connectionStatus" class="connection-status">Connecting...</div>
+                    <div id="chat-status" class="chat-status">Connecting...</div>
                 </div>
                 <div id="chat-messages" class="chat-messages">
-                    <!-- Messages will be populated here -->
                     <div class="message system">
-                        <div class="message-content">Welcome to your squad chat! Messages will appear here.</div>
+                        <div class="message-content">Welcome to the squad chat! Messages will appear here.</div>
                     </div>
                 </div>
                 <div class="chat-input">
-                    <input type="text" id="message-input" placeholder="Type your message...">
-                    <button id="send-button">Send</button>
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        placeholder="Type your message..." 
+                        autocomplete="off"
+                    >
+                    <button id="send-button">
+                        <i class="fas fa-paper-plane"></i>
+                        Send
+                    </button>
                 </div>
-                <input type="hidden" id="squad-id" value="squad-1">
+                <input type="hidden" id="squad-id" value="test-squad-1">
             </div>
 
             <div class="video-call-section">
@@ -1249,6 +1333,8 @@
 
     <!-- Add this near the end of your file, before the closing </body> tag -->
     <script src="/js/fallback-chat.js"></script>
+    <script src="/js/squad-members.js"></script>
+    <script src="/js/nearby-coders.js"></script>
 
     <script>
       // Check if we need to use the fallback chat system
@@ -1316,6 +1402,88 @@
           e.preventDefault();
         }
       });
+
+      // Add this before the Socket.IO initialization
+      document.addEventListener('DOMContentLoaded', async () => {
+        try {
+          // Check if user is logged in
+          const userData = localStorage.getItem('user');
+          if (!userData) {
+            window.location.href = '/login.html';
+            return;
+          }
+
+          // Initialize chat
+          const chat = new SquadChat();
+          const initialized = await chat.init();
+          
+          if (!initialized) {
+            console.warn('Primary chat initialization failed, using fallback');
+            if (window.FallbackChat) {
+              window.FallbackChat.startPolling();
+            }
+          }
+        } catch (error) {
+          console.error('Chat initialization error:', error);
+          // Use fallback if available
+          if (window.FallbackChat) {
+            window.FallbackChat.startPolling();
+          }
+        }
+      });
+
+      // Helper functions for member actions
+      function sendMessage(userId) {
+          // Implement direct message functionality
+          console.log('Sending message to user:', userId);
+      }
+
+      function inviteToSquad(userId) {
+          // Implement squad invite functionality
+          fetch(`/api/squad/${currentSquadId}/members`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ userId })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.error) {
+                  throw new Error(data.error);
+              }
+              alert('User invited successfully!');
+          })
+          .catch(error => {
+              console.error('Error inviting user:', error);
+              alert('Failed to invite user');
+          });
+      }
+
+      // Add debounce helper function if not already present
+      function debounce(func, wait) {
+          let timeout;
+          return function executedFunction(...args) {
+              const later = () => {
+                  clearTimeout(timeout);
+                  func(...args);
+              };
+              clearTimeout(timeout);
+              timeout = setTimeout(later, wait);
+          };
+      }
     </script>
+
+    <!-- Add this right before the closing </body> tag -->
+    <div id="inviteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Invite Members</h2>
+            <div class="search-container">
+                <input type="text" id="userSearch" placeholder="Search users...">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

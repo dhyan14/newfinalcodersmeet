@@ -34,13 +34,17 @@ const userSchema = new mongoose.Schema({
     pendingConnections: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     bio: String,
     avatarUrl: String,
-    skills: [{
-        name: String,
-        level: String
-    }],
+    skills: [String],
     location: {
-        type: { type: String, default: 'Point' },
-        coordinates: { type: [Number], default: [0, 0] }
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number],
+            default: [0, 0]
+        }
     },
     locationUpdatedAt: { type: Date }
 }, { 
