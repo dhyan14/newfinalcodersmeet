@@ -1,0 +1,221 @@
+/* Coder Theme - Green and Black */
+:root {
+  --coder-bg-dark: #0a0e0a;
+  --coder-bg-light: #f0f7f0;
+  --coder-green: #00ff00;
+  --coder-green-dim: #4ade80;
+  --coder-green-dark: #1a4731;
+  --coder-text-dark: #d1ffd1;
+  --coder-text-light: #1a2e1a;
+  --coder-accent: #00cc00;
+  --coder-secondary: #333;
+  --coder-border: #1e3a1e;
+  --coder-highlight: #00ff9d;
+  --coder-shadow: rgba(0, 255, 0, 0.2);
+}
+
+/* Base Theme Styles */
+.coder-theme {
+  background-color: var(--coder-bg-dark);
+  color: var(--coder-text-dark);
+  font-family: 'Source Code Pro', 'Fira Code', monospace;
+  transition: all 0.3s ease;
+}
+
+.light-coder-theme {
+  background-color: var(--coder-bg-light);
+  color: var(--coder-text-light);
+}
+
+/* Navigation */
+.coder-nav {
+  background-color: rgba(10, 14, 10, 0.9);
+  border-bottom: 1px solid var(--coder-green);
+}
+
+.light-coder-theme .coder-nav {
+  background-color: rgba(240, 247, 240, 0.9);
+  border-bottom: 1px solid var(--coder-green-dark);
+}
+
+.code-text {
+  font-family: 'Fira Code', monospace;
+  font-weight: 600;
+}
+
+.highlight {
+  color: var(--coder-green);
+  text-shadow: 0 0 5px var(--coder-shadow);
+}
+
+.light-coder-theme .highlight {
+  color: var(--coder-green-dark);
+  text-shadow: none;
+}
+
+/* Buttons */
+.coder-btn {
+  background-color: transparent;
+  color: var(--coder-green);
+  border: 1px solid var(--coder-green);
+  padding: 10px 20px;
+  font-family: 'Fira Code', monospace;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.coder-btn:hover {
+  background-color: var(--coder-green);
+  color: var(--coder-bg-dark);
+  box-shadow: 0 0 10px var(--coder-green);
+}
+
+.light-coder-theme .coder-btn {
+  color: var(--coder-green-dark);
+  border: 1px solid var(--coder-green-dark);
+}
+
+.light-coder-theme .coder-btn:hover {
+  background-color: var(--coder-green-dark);
+  color: var(--coder-bg-light);
+  box-shadow: 0 0 10px var(--coder-green-dark);
+}
+
+/* Typography */
+.section-title {
+  color: var(--coder-green);
+  font-family: 'Fira Code', monospace;
+  border-bottom: 2px solid var(--coder-green);
+  display: inline-block;
+  padding-bottom: 5px;
+}
+
+.light-coder-theme .section-title {
+  color: var(--coder-green-dark);
+  border-bottom: 2px solid var(--coder-green-dark);
+}
+
+.code-function {
+  color: var(--coder-highlight);
+  font-family: 'Fira Code', monospace;
+}
+
+.light-coder-theme .code-function {
+  color: var(--coder-green-dark);
+}
+
+.code-block {
+  padding-left: 20px;
+  border-left: 2px solid var(--coder-green-dim);
+  font-family: 'Source Code Pro', monospace;
+}
+
+.light-coder-theme .code-block {
+  border-left: 2px solid var(--coder-green-dark);
+}
+
+.code-comment {
+  color: #6a9955;
+  font-style: italic;
+  font-family: 'Source Code Pro', monospace;
+}
+
+.light-coder-theme .code-comment {
+  color: #2e5e2e;
+}
+
+.code-closing {
+  color: var(--coder-highlight);
+  font-family: 'Fira Code', monospace;
+}
+
+.light-coder-theme .code-closing {
+  color: var(--coder-green-dark);
+}
+
+/* Typewriter effect */
+.typewriter {
+  font-family: 'Fira Code', monospace;
+  color: var(--coder-green);
+}
+
+.light-coder-theme .typewriter {
+  color: var(--coder-green-dark);
+}
+
+.cursor {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Hero Section */
+.hero-section {
+  background: linear-gradient(rgba(10, 14, 10, 0.9), rgba(10, 14, 10, 0.95)), 
+              url('path-to-your-background-image.jpg') no-repeat center center;
+  background-size: cover;
+}
+
+.light-coder-theme .hero-section {
+  background: linear-gradient(rgba(240, 247, 240, 0.9), rgba(240, 247, 240, 0.95)), 
+              url('path-to-your-background-image.jpg') no-repeat center center;
+  background-size: cover;
+}
+
+/* Social Links */
+.social-links a {
+  color: var(--coder-green);
+  border: 1px solid var(--coder-green);
+  transition: all 0.3s ease;
+}
+
+.social-links a:hover {
+  background-color: var(--coder-green);
+  color: var(--coder-bg-dark);
+}
+
+.light-coder-theme .social-links a {
+  color: var(--coder-green-dark);
+  border: 1px solid var(--coder-green-dark);
+}
+
+.light-coder-theme .social-links a:hover {
+  background-color: var(--coder-green-dark);
+  color: var(--coder-bg-light);
+}
+
+/* Footer */
+.coder-footer {
+  background-color: var(--coder-bg-dark);
+  border-top: 1px solid var(--coder-green);
+  padding: 20px 0;
+  text-align: center;
+  margin-top: 50px;
+}
+
+.light-coder-theme .coder-footer {
+  background-color: var(--coder-bg-light);
+  border-top: 1px solid var(--coder-green-dark);
+}
+
+/* Theme Switch Customization */
+.theme-switch__container {
+  border: 1px solid var(--coder-green);
+}
+
+.light-coder-theme .theme-switch__container {
+  border: 1px solid var(--coder-green-dark);
+}
+
+.theme-switch__circle-container {
+  background-color: var(--coder-green);
+}
+
+.light-coder-theme .theme-switch__circle-container {
+  background-color: var(--coder-green-dark);
+} 
