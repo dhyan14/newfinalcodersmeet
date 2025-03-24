@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,9 +7,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<<<<<<< HEAD
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/squad-chat.js"></script>
     <script src="/js/config.js"></script>
+=======
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
     <style>
         .squad-container {
             display: grid;
@@ -1182,6 +1185,7 @@
                         <i class="fas fa-comments"></i>
                         Squad Chat
                     </div>
+<<<<<<< HEAD
                     <div id="chat-status" class="chat-status">Connecting...</div>
                 </div>
                 <div id="chat-messages" class="chat-messages">
@@ -1202,6 +1206,19 @@
                     </button>
                 </div>
                 <input type="hidden" id="squad-id" value="test-squad-1">
+=======
+                    <div id="connectionStatus" class="connection-status offline">Offline</div>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Messages will be populated here -->
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Type a message...">
+                    <button id="sendMessageBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
             </div>
 
             <div class="video-call-section">
@@ -1331,76 +1348,2062 @@
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- Add this near the end of your file, before the closing </body> tag -->
     <script src="/js/fallback-chat.js"></script>
     <script src="/js/squad-members.js"></script>
     <script src="/js/nearby-coders.js"></script>
 
+=======
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
     <script>
-      // Check if we need to use the fallback chat system
-      let usingFallback = false;
-      
-      // Function to test API availability
-      function testApiAndSocketAvailability() {
-        // First try the API
-        fetch('/api/server-info')
-          .then(response => {
-            if (!response.ok) throw new Error('API not available');
-            return response.json();
-          })
-          .then(data => {
-            console.log('Server info:', data);
-            // API is available, now check if Socket.io is working
-            if (typeof io !== 'undefined' && window.socket && window.socket.connected) {
-              console.log('Socket.io is connected, using real-time chat');
-              // Socket.io is working, no need for fallback
-              usingFallback = false;
+        // Global variables
+        let socket = null; // Initialize socket variable
+        let localStream = null; // For local media stream
+        let isInCall = false; // Call status
+        let callTimer = null; // For tracking call duration
+        let peerConnections = {}; // Store WebRTC peer connections
+        let roomId = null; // Room ID for the call
+
+        // Function to get initials from name
+        function getInitials(name) {
+            if (!name) return '?';
+            return name
+                .split(' ')
+                .map(part => part.charAt(0))
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+        }
+
+        // Function to start a group video call
+        function startGroupCall() {
+            if (!socket) {
+                console.error('Socket connection not established');
+                alert('Could not connect to the call server. Please try again later.');
+                return;
+            }
+            
+            // If already in a call, clean up first
+            if (isInCall) {
+                cleanupMediaDevices();
+            }
+            
+            // Show call interface
+            const callContainer = document.getElementById('videoCallContainer');
+            callContainer.style.display = 'flex';
+            
+            // Set call status
+            isInCall = true;
+            
+            // Use a consistent room ID for the squad chat
+            roomId = 'squad-call-room-' + Date.now();
+            console.log(`Starting call with room ID: ${roomId}`);
+            
+            // Get current user
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            
+            // Clear existing participants
+            const participantsGrid = document.getElementById('videoParticipants');
+            const existingParticipants = participantsGrid.querySelectorAll('.video-participant:not(.self)');
+            existingParticipants.forEach(participant => participant.remove());
+            
+            // Update local video participant info
+            const localParticipant = participantsGrid.querySelector('.self');
+            if (localParticipant) {
+                const nameElement = localParticipant.querySelector('.participant-name');
+                if (nameElement) {
+                    nameElement.textContent = `You (${currentUser.fullName || currentUser.username})`;
+                }
+                const initialsElement = localParticipant.querySelector('.participant-initials');
+                if (initialsElement) {
+                    initialsElement.textContent = getInitials(currentUser.fullName || currentUser.username);
+                }
+            }
+            
+            // First check if devices are available
+            navigator.mediaDevices.enumerateDevices()
+                .then(devices => {
+                    const hasVideo = devices.some(device => device.kind === 'videoinput');
+                    const hasAudio = devices.some(device => device.kind === 'audioinput');
+                    
+                    if (!hasVideo && !hasAudio) {
+                        throw new Error('No camera or microphone found');
+                    }
+                    
+                    // Request camera and microphone access
+                    return navigator.mediaDevices.getUserMedia({ 
+                        video: hasVideo,
+                        audio: hasAudio
+                    });
+                })
+                .then(stream => {
+                    console.log('Got local media stream');
+                    localStream = stream;
+                    
+                    // Display local video
+                    const localVideo = document.getElementById('localVideo');
+                    if (localVideo) {
+                        localVideo.srcObject = stream;
+                        localVideo.onloadedmetadata = () => {
+                            localVideo.play()
+                                .then(() => {
+                                    // Hide placeholder when video is ready
+                                    const placeholder = localParticipant.querySelector('.video-placeholder');
+                                    if (placeholder) {
+                                        placeholder.style.display = 'none';
+                                    }
+                                })
+                                .catch(e => console.error('Error playing local video:', e));
+                        };
+                    }
+                    
+                    // Join the call room
+                    socket.emit('join_call', {
+                        roomId: roomId,
+                        userId: currentUser._id || currentUser.email,
+                        name: currentUser.fullName || currentUser.username
+                    });
+                    
+                    // Start call timer
+                    startCallTimer();
+                })
+                .catch(error => {
+                    console.error('Error accessing media devices:', error);
+                    handleMediaError(error);
+                });
+        }
+
+        // Add this helper function to handle media errors
+        function handleMediaError(error) {
+            let message = 'Could not access camera or microphone. Please check your permissions.';
+            
+            if (error.name === 'NotReadableError') {
+                message = 'Camera or microphone is already in use. Please:\n\n' +
+                         '1. Close other applications using your camera/microphone\n' +
+                         '2. Close other browser tabs that might be using the camera\n' +
+                         '3. Try refreshing this page\n\n' +
+                         'Then try joining the call again.';
+            } else if (error.name === 'NotAllowedError') {
+                message = 'Please allow access to your camera and microphone to join the call.';
+            } else if (error.name === 'NotFoundError') {
+                message = 'No camera or microphone found. Please check your device connections.';
+            }
+            
+            alert(message);
+            
+            // Clean up and reset
+            cleanupMediaDevices();
+            const callContainer = document.getElementById('videoCallContainer');
+            if (callContainer) {
+                callContainer.style.display = 'none';
+            }
+            isInCall = false;
+        }
+
+        // Add this helper function to start the call timer
+        function startCallTimer() {
+            let callSeconds = 0;
+            const callDuration = document.querySelector('.call-duration');
+            callTimer = setInterval(() => {
+                callSeconds++;
+                const minutes = Math.floor(callSeconds / 60).toString().padStart(2, '0');
+                const seconds = (callSeconds % 60).toString().padStart(2, '0');
+                if (callDuration) {
+                    callDuration.textContent = `${minutes}:${seconds}`;
+                }
+            }, 1000);
+        }
+
+        // Function to fetch friends for the call
+        function fetchFriendsForCall(participantsGrid) {
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            
+            fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch user data');
+                    return response.json();
+                })
+                .then(userData => {
+                    if (!userData || !userData._id) throw new Error('User ID not found');
+                    
+                    // Now fetch friends
+                    return fetch(`http://localhost:5000/api/friends?userId=${userData._id}`);
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch friends');
+                    return response.json();
+                })
+                .then(friendsData => {
+                    console.log('Friends for video call:', friendsData);
+                    
+                    // If we have friends, invite them to the call
+                    if (friendsData && friendsData.length > 0) {
+                        // Show waiting message
+                        const waitingElement = document.createElement('div');
+                        waitingElement.className = 'waiting-message';
+                        waitingElement.id = 'waitingMessage';
+                        waitingElement.innerHTML = `
+                            <p>Waiting for friends to join the call...</p>
+                            <p>They will appear here when they connect.</p>
+                        `;
+                        participantsGrid.appendChild(waitingElement);
+                        
+                        // We don't need to simulate friends joining since we're using real WebRTC
+                        // The socket.on('user_joined') handler will take care of creating peer connections
+                    } else {
+                        // If no friends, show a message
+                        const noFriendsElement = document.createElement('div');
+                        noFriendsElement.className = 'no-friends-message';
+                        noFriendsElement.innerHTML = `
+                            <p>No friends available for the call.</p>
+                            <p>Add friends to invite them to video calls!</p>
+                        `;
+                        participantsGrid.appendChild(noFriendsElement);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching friends for video call:', error);
+                    
+                    // Show error message
+                    const errorElement = document.createElement('div');
+                    errorElement.className = 'error-message';
+                    errorElement.innerHTML = `
+                        <p>Error connecting to friends.</p>
+                        <p>Please try again later.</p>
+                    `;
+                    participantsGrid.appendChild(errorElement);
+                });
+        }
+
+        // Function to simulate a friend joining the call
+        function simulateFriendJoining(friend, index) {
+            // Generate a unique ID for this friend
+            const friendId = friend._id || `friend-${index}-${Date.now()}`;
+            const friendName = friend.fullName || friend.username || 'Friend';
+            
+            console.log(`Simulating ${friendName} joining the call`);
+            
+            // Remove waiting message if it exists
+            const waitingMessage = document.getElementById('waitingMessage');
+            if (waitingMessage) {
+                waitingMessage.remove();
+            }
+            
+            // Create a peer connection for this friend
+            const peerConnection = createPeerConnection(friendId, friendName);
+            
+            // Add our local stream to the connection
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+            }
+            
+            // For demo purposes, create a simulated stream for this friend
+            createSimulatedStream(friendId, friendName);
+            
+            // In a real app, the signaling server would notify other users
+            // For demo, we'll simulate the friend sending an offer
+            setTimeout(() => {
+                // Create a simulated offer (in a real app, this would come from the friend)
+                const simulatedOffer = { type: 'offer', sdp: 'simulated_sdp_data' };
+                
+                // Handle the simulated offer
+                handleSimulatedOffer(friendId, friendName, simulatedOffer);
+            }, 1000);
+        }
+
+        // Function to handle a simulated offer
+        function handleSimulatedOffer(friendId, friendName, offer) {
+            console.log(`Handling simulated offer from ${friendName}`);
+            
+            // In a real app, we would set the remote description and create an answer
+            // For demo purposes, we'll just simulate the connection being established
+            
+            // Add the friend to the call UI if not already added
+            if (!document.getElementById(`participant-${friendId}`)) {
+                addRemoteVideoStream(friendId, friendName, null);
+            }
+        }
+
+        // Function to create a simulated video stream for a friend
+        function createSimulatedStream(friendId, friendName) {
+            console.log(`Creating simulated stream for ${friendName}`);
+            
+            // Create a canvas element
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+            
+            // Generate a random color for this friend
+            const colors = ['#2196F3', '#9C27B0', '#FF9800', '#E91E63', '#00BCD4'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Animation variables
+            let x = canvas.width / 2;
+            let y = canvas.height / 2;
+            let dx = 2;
+            let dy = 2;
+            const radius = 30;
+            
+            // Create a stream from the canvas
+            const stream = canvas.captureStream(30); // 30 FPS
+            
+            // Add the friend to the call UI
+            const participantElement = addRemoteVideoStream(friendId, friendName, stream);
+            
+            // Force hide the placeholder after a short delay
+            setTimeout(() => {
+                const placeholder = participantElement.querySelector('.video-placeholder');
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+            }, 1000);
+            
+            // Animate the canvas to simulate video
+            function animate() {
+                const participantElement = document.getElementById(`participant-${friendId}`);
+                if (!participantElement) {
+                    return; // Stop animation if participant is removed
+                }
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw background
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw moving circle
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.closePath();
+                
+                // Draw text
+                ctx.font = '24px Arial';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillText(friendName, canvas.width/2, canvas.height/2);
+                
+                // Move the circle
+                x += dx;
+                y += dy;
+                
+                // Bounce off walls
+                if (x + radius > canvas.width || x - radius < 0) {
+                    dx = -dx;
+                }
+                if (y + radius > canvas.height || y - radius < 0) {
+                    dy = -dy;
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+
+        // Function to simulate fallback friends joining
+        function simulateFallbackFriends(participantsGrid) {
+            const fallbackFriends = [
+                { name: "Alex Johnson", id: "fallback-1", color: "#2196F3" },
+                { name: "Sarah Williams", id: "fallback-2", color: "#9C27B0" },
+                { name: "Michael Chen", id: "fallback-3", color: "#FF9800" }
+            ];
+            
+            fallbackFriends.forEach((friend, index) => {
+                setTimeout(() => {
+                    // Create a peer connection for this friend
+                    const peerConnection = createPeerConnection(friend.id, friend.name);
+                    
+                    // Add our local stream to the connection
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => {
+                            peerConnection.addTrack(track, localStream);
+                        });
+                    }
+                    
+                    // Create a simulated stream for this friend
+                    createSimulatedStream(friend.id, friend.name);
+                }, (index + 1) * 2000);
+            });
+        }
+
+        // Add this function to properly clean up media devices
+        function cleanupMediaDevices() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    track.stop();
+                });
+                localStream = null;
+            }
+        }
+
+        // Update the endCall function
+        function endCall() {
+            console.log('Ending call...');
+            
+            // Clean up media devices
+            cleanupMediaDevices();
+            
+            // Clean up peer connections
+            Object.keys(peerConnections).forEach(userId => {
+                if (peerConnections[userId].connection) {
+                    peerConnections[userId].connection.close();
+                }
+            });
+            peerConnections = {};
+            
+            // Leave the call room
+            if (socket && roomId) {
+                socket.emit('leave_call', { roomId });
+            }
+            
+            // Stop the timer
+            if (callTimer) {
+                clearInterval(callTimer);
+                callTimer = null;
+            }
+            
+            // Reset call status
+            isInCall = false;
+            roomId = null;
+            
+            // Hide call container
+            const callContainer = document.getElementById('videoCallContainer');
+            if (callContainer) {
+                callContainer.style.display = 'none';
+            }
+            
+            console.log('Call ended and resources cleaned up');
+        }
+
+        // Update the toggleVideo function to actually toggle the camera
+        function toggleVideo() {
+            const videoBtn = event.target.closest('.call-btn');
+            videoBtn.classList.toggle('active');
+            const isCameraOff = !videoBtn.classList.contains('active');
+            
+            // Update UI
+            const participantVideo = document.querySelector('.self .participant-video');
+            if (participantVideo) {
+                if (isCameraOff) {
+                    participantVideo.classList.remove('camera-on');
+                    participantVideo.classList.add('camera-off');
+                    videoBtn.innerHTML = '<i class="fas fa-video-slash"></i>';
+                    videoBtn.title = 'Turn Video On';
+                    
+                    // Show the placeholder
+                    const placeholder = participantVideo.querySelector('.video-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'flex';
+                    }
+                } else {
+                    participantVideo.classList.remove('camera-off');
+                    participantVideo.classList.add('camera-on');
+                    videoBtn.innerHTML = '<i class="fas fa-video"></i>';
+                    videoBtn.title = 'Turn Video Off';
+                    
+                    // Hide the placeholder
+                    const placeholder = participantVideo.querySelector('.video-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Actually toggle the camera
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !isCameraOff;
+                }
+            }
+        }
+
+        // Update the toggleMute function to actually toggle the microphone
+        function toggleMute() {
+            const muteBtn = event.target.closest('.call-btn');
+            muteBtn.classList.toggle('active');
+            const isMuted = !muteBtn.classList.contains('active');
+            
+            // Update UI
+            const microphoneIndicator = document.querySelector('.self .microphone-indicator');
+            if (microphoneIndicator) {
+                if (isMuted) {
+                    microphoneIndicator.classList.add('muted');
+                    microphoneIndicator.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+                    muteBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+                    muteBtn.title = 'Unmute';
+                } else {
+                    microphoneIndicator.classList.remove('muted');
+                    microphoneIndicator.innerHTML = '<i class="fas fa-microphone"></i>';
+                    muteBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                    muteBtn.title = 'Mute';
+                }
+            }
+            
+            // Actually toggle the microphone
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !isMuted;
+                }
+            }
+        }
+
+        // Toggle screen sharing
+        function toggleScreenShare() {
+            if (!isInCall) return;
+            
+            const screenShareButton = document.querySelector('.call-controls button:nth-child(3)');
+            const isScreenSharing = screenShareButton.classList.contains('active');
+            
+            if (isScreenSharing) {
+                // Stop screen sharing
+                stopScreenSharing();
             } else {
-              console.log('Socket.io not connected, using fallback chat');
-              // Socket.io is not working, use fallback
-              usingFallback = true;
-              if (window.FallbackChat) {
-                window.FallbackChat.startPolling();
-              }
+                // Start screen sharing
+                startScreenSharing();
             }
-          })
-          .catch(error => {
-            console.warn('API test failed:', error);
-            // API is not available, use fallback
-            usingFallback = true;
-            if (window.FallbackChat) {
-              window.FallbackChat.useLocalStorage(true);
-              window.FallbackChat.startPolling();
+        }
+
+        // Start screen sharing
+        function startScreenSharing() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                alert('Screen sharing is not supported in this browser');
+                return;
             }
-          });
-      }
-      
-      // Run the test when the page loads
-      window.addEventListener('load', testApiAndSocketAvailability);
-      
-      // Update the send button to use the appropriate chat system
-      document.getElementById('send-button')?.addEventListener('click', function() {
-        if (usingFallback && window.FallbackChat) {
-          window.FallbackChat.sendMessage();
-        } else if (window.sendSquadMessage) {
-          window.sendSquadMessage();
-        } else if (window.PollingChat) {
-          window.PollingChat.sendMessage();
+            
+            // Save the current video stream to restore later
+            const savedVideoStream = localStream;
+            
+            // Request screen sharing
+            navigator.mediaDevices.getDisplayMedia({ video: true })
+                .then(screenStream => {
+                    console.log('Screen sharing started');
+                    
+                    // Update UI
+                    const screenShareButton = document.querySelector('.call-controls button:nth-child(3)');
+                    screenShareButton.classList.add('active');
+                    
+                    // Store the screen stream
+                    screenSharingStream = screenStream;
+                    
+                    // Replace the video track in all peer connections
+                    const videoTrack = screenStream.getVideoTracks()[0];
+                    
+                    // Add a listener for when the user stops screen sharing
+                    videoTrack.onended = () => {
+                        stopScreenSharing();
+                    };
+                    
+                    // Replace the video track in all peer connections
+                    for (const userId in peerConnections) {
+                        const peerConnection = peerConnections[userId].connection;
+                        const senders = peerConnection.getSenders();
+                        
+                        const videoSender = senders.find(sender => 
+                            sender.track && sender.track.kind === 'video'
+                        );
+                        
+                        if (videoSender) {
+                            videoSender.replaceTrack(videoTrack)
+                                .catch(error => console.error('Error replacing video track:', error));
+                        }
+                    }
+                    
+                    // Replace the video track in the local stream
+                    const localVideoElement = document.getElementById('localVideo');
+                    if (localVideoElement) {
+                        // Create a new stream with the screen track and audio from the original stream
+                        const newStream = new MediaStream();
+                        
+                        // Add the screen video track
+                        newStream.addTrack(videoTrack);
+                        
+                        // Add audio tracks from the original stream if they exist
+                        if (localStream) {
+                            const audioTracks = localStream.getAudioTracks();
+                            audioTracks.forEach(track => {
+                                newStream.addTrack(track);
+                            });
+                        }
+                        
+                        // Replace the local stream
+                        localStream = newStream;
+                        
+                        // Update the video element
+                        localVideoElement.srcObject = newStream;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting screen sharing:', error);
+                    alert('Could not start screen sharing: ' + error.message);
+                });
         }
-      });
-      
-      // Also handle Enter key in the input field
-      document.getElementById('message-input')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-          if (usingFallback && window.FallbackChat) {
-            window.FallbackChat.sendMessage();
-          } else if (window.sendSquadMessage) {
-            window.sendSquadMessage();
-          } else if (window.PollingChat) {
-            window.PollingChat.sendMessage();
-          }
-          e.preventDefault();
+
+        // Stop screen sharing
+        function stopScreenSharing() {
+            if (!screenSharingStream) return;
+            
+            console.log('Screen sharing stopped');
+            
+            // Update UI
+            const screenShareButton = document.querySelector('.call-controls button:nth-child(3)');
+            screenShareButton.classList.remove('active');
+            
+            // Stop all tracks in the screen sharing stream
+            screenSharingStream.getTracks().forEach(track => track.stop());
+            screenSharingStream = null;
+            
+            // Request camera access again
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(newStream => {
+                    // Replace the video track in all peer connections
+                    const videoTrack = newStream.getVideoTracks()[0];
+                    
+                    for (const userId in peerConnections) {
+                        const peerConnection = peerConnections[userId].connection;
+                        const senders = peerConnection.getSenders();
+                        
+                        const videoSender = senders.find(sender => 
+                            sender.track && sender.track.kind === 'video'
+                        );
+                        
+                        if (videoSender) {
+                            videoSender.replaceTrack(videoTrack)
+                                .catch(error => console.error('Error replacing video track:', error));
+                        }
+                    }
+                    
+                    // Replace the local stream
+                    localStream = newStream;
+                    
+                    // Update the video element
+                    const localVideoElement = document.getElementById('localVideo');
+                    if (localVideoElement) {
+                        localVideoElement.srcObject = newStream;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error restarting camera after screen sharing:', error);
+                });
         }
+
+        // Add video styles for better display
+        function addVideoStyles() {
+            const style = document.createElement('style');
+            style.textContent = `
+                .video-participant {
+                    transition: all 0.3s ease;
+                }
+                
+                .video-participant.speaking {
+                    transform: scale(1.05);
+                    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+                }
+                
+                .microphone-indicator {
+                    position: absolute;
+                    bottom: 10px;
+                    right: 10px;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    z-index: 3;
+                }
+                
+                .microphone-indicator.muted i {
+                    color: red;
+                }
+                
+                .waiting-message, .no-friends-message, .error-message {
+                    grid-column: 1 / -1;
+                    padding: 20px;
+                    text-align: center;
+                    background: rgba(0, 0, 0, 0.1);
+                    border-radius: 10px;
+                    margin: 20px 0;
+                }
+                
+                .waiting-message p, .no-friends-message p, .error-message p {
+                    margin: 5px 0;
+                }
+                
+                .error-message {
+                    background: rgba(255, 0, 0, 0.1);
+                }
+                
+                .participant-video.camera-on video {
+                    z-index: 2;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Call this function when the page loads
+        document.addEventListener('DOMContentLoaded', addVideoStyles);
+
+        // Initialize global variable for screen sharing
+        let screenSharingStream = null;
+
+        // Add audio level detection for speaking indication
+        function setupAudioLevelDetection() {
+            if (!localStream) return;
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioSource = audioContext.createMediaStreamSource(localStream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.1;
+            audioSource.connect(analyser);
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const selfParticipant = document.querySelector('.video-participant.self');
+            
+            function checkAudioLevel() {
+                analyser.getByteFrequencyData(dataArray);
+                
+                // Calculate average volume level
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / dataArray.length;
+                
+                // Consider speaking if above threshold
+                if (average > 30) {
+                    selfParticipant.classList.add('speaking');
+                } else {
+                    selfParticipant.classList.remove('speaking');
+                }
+                
+                // Continue checking
+                requestAnimationFrame(checkAudioLevel);
+            }
+            
+            checkAudioLevel();
+        }
+
+        // Update the handleMediaStream function to set up audio level detection
+        function handleMediaStream(stream, videoElement) {
+            // Store the stream for later use
+            localStream = stream;
+            
+            // Display the video
+            const videoEl = document.getElementById('localVideo');
+            if (videoEl) {
+                videoEl.srcObject = stream;
+                
+                // Hide the placeholder when video is ready
+                videoEl.onloadedmetadata = () => {
+                    console.log('Local video metadata loaded');
+                    const placeholder = videoElement.querySelector('.video-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                    
+                    // Set up audio level detection
+                    setupAudioLevelDetection();
+                };
+                
+                // Also set a timeout to hide the placeholder in case onloadedmetadata doesn't fire
+                setTimeout(() => {
+                    const placeholder = videoElement.querySelector('.video-placeholder');
+                    if (placeholder && videoEl.srcObject) {
+                        placeholder.style.display = 'none';
+                    }
+                }, 2000);
+            }
+            
+            // Fetch friends to add to the call
+            fetchFriendsForCall(participantsGrid);
+        }
+
+        // Add a function to handle network quality monitoring
+        function monitorNetworkQuality(peerConnection, userId) {
+            // Get connection stats periodically
+            const statsInterval = setInterval(() => {
+                if (!peerConnection || peerConnection.connectionState === 'closed') {
+                    clearInterval(statsInterval);
+                    return;
+                }
+                
+                peerConnection.getStats(null).then(stats => {
+                    let videoBitrate = 0;
+                    let audioBitrate = 0;
+                    let packetsLost = 0;
+                    let jitter = 0;
+                    
+                    stats.forEach(report => {
+                        if (report.type === 'inbound-rtp' && report.kind === 'video') {
+                            videoBitrate = report.bytesReceived;
+                            packetsLost = report.packetsLost;
+                        }
+                        if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+                            audioBitrate = report.bytesReceived;
+                            jitter = report.jitter;
+                        }
+                    });
+                    
+                    // Update UI based on network quality
+                    const participantElement = document.getElementById(`participant-${userId}`);
+                    if (participantElement) {
+                        const statusElement = participantElement.querySelector('.participant-status');
+                        if (statusElement) {
+                            // Simple quality assessment
+                            if (packetsLost > 50) {
+                                statusElement.textContent = 'Poor Connection';
+                                statusElement.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+                            } else if (packetsLost > 10) {
+                                statusElement.textContent = 'Fair Connection';
+                                statusElement.style.backgroundColor = 'rgba(255, 165, 0, 0.3)';
+                            }
+                        }
+                    }
+                });
+            }, 2000);
+            
+            // Store the interval ID in the peer connection object for cleanup
+            if (peerConnections[userId]) {
+                peerConnections[userId].statsInterval = statsInterval;
+            }
+        }
+
+        // Update createPeerConnection to include network quality monitoring
+        const originalCreatePeerConnection = createPeerConnection;
+        createPeerConnection = function(userId, userName) {
+            console.log(`Creating peer connection for ${userName} (${userId})`);
+            
+            const configuration = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            };
+            
+            const peerConnection = new RTCPeerConnection(configuration);
+            
+            // Store the connection
+            peerConnections[userId] = {
+                connection: peerConnection,
+                userName: userName
+            };
+            
+            // Add local stream tracks to the connection
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+            }
+            
+            // Handle incoming tracks
+            peerConnection.ontrack = (event) => {
+                console.log(`Received track from ${userName}:`, event.track.kind);
+                handleRemoteTrack(event, userId, userName);
+            };
+            
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('webrtc_ice_candidate', {
+                        roomId: roomId,
+                        targetUserId: userId,
+                        fromUserId: JSON.parse(localStorage.getItem('user'))._id,
+                        candidate: event.candidate
+                    });
+                }
+            };
+            
+            // Handle connection state changes
+            peerConnection.onconnectionstatechange = () => {
+                console.log(`Connection state for ${userName}: ${peerConnection.connectionState}`);
+                updateParticipantStatus(userId, peerConnection.connectionState);
+            };
+            
+            return peerConnection;
+        };
+
+        // Add this helper function to handle remote tracks
+        function handleRemoteTrack(event, userId, userName) {
+            const stream = event.streams[0];
+            if (!stream) return;
+            
+            let participantElement = document.getElementById(`participant-${userId}`);
+            if (!participantElement) {
+                participantElement = addRemoteVideoStream(userId, userName, stream);
+            }
+            
+            const videoElement = participantElement.querySelector('video');
+            if (videoElement && videoElement.srcObject !== stream) {
+                videoElement.srcObject = stream;
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play().catch(e => console.error('Error playing remote video:', e));
+                };
+            }
+        }
+
+        // Add this helper function to update participant status
+        function updateParticipantStatus(userId, state) {
+            const participantElement = document.getElementById(`participant-${userId}`);
+            if (participantElement) {
+                const statusElement = participantElement.querySelector('.participant-status');
+                if (statusElement) {
+                    switch (state) {
+                        case 'connected':
+                            statusElement.textContent = 'Connected';
+                            statusElement.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+                            break;
+                        case 'disconnected':
+                        case 'failed':
+                            statusElement.textContent = 'Disconnected';
+                            statusElement.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+                            break;
+                        case 'connecting':
+                            statusElement.textContent = 'Connecting...';
+                            statusElement.style.backgroundColor = 'rgba(255, 165, 0, 0.3)';
+                            break;
+                    }
+                }
+            }
+        }
+
+        // Initialize socket connection when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSquadMembers();
+            loadOnlineFriends();
+            loadChatMessages();
+            initializeSocket();
+        });
+
+        // Check if user is logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = localStorage.getItem('user');
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Load squad data
+            loadSquadData();
+            
+            // Load squad members
+            loadSquadMembers();
+            
+            // Load online friends
+            loadOnlineFriends();
+            
+            // Load chat messages
+            loadChatMessages();
+            
+            // Set up message sending
+            document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                    e.preventDefault();
+                }
+            });
+            
+            // Set up squad settings form
+            document.getElementById('squadSettingsForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveSquadSettings();
+            });
+
+            // Set up search functionality
+            document.getElementById('searchMembers').addEventListener('input', searchUsers);
+        });
+
+        // Mobile menu functions
+        function hamburg() {
+            document.querySelector('.dropdown').style.display = 'block';
+        }
+        
+        function cancel() {
+            document.querySelector('.dropdown').style.display = 'none';
+        }
+        
+        // Logout function
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+        
+        // Squad data functions
+        function loadSquadData() {
+            // This would normally fetch from the server
+            // For now, we'll use mock data
+            const squadData = {
+                name: "Code Warriors",
+                points: 5230,
+                level: "Silver",
+                progress: 65, // percentage to next level
+                globalRank: 42,
+                regionalRank: 8,
+                nextLevel: "Gold",
+                nextLevelPoints: 7500
+            };
+            
+            // Update UI
+            document.getElementById('squadName').textContent = squadData.name;
+            document.getElementById('squadPoints').textContent = squadData.points.toLocaleString() + ' points';
+            document.getElementById('squadLevelBadge').textContent = squadData.level;
+            document.getElementById('squadLevelBadge').className = 'level-badge ' + squadData.level.toLowerCase();
+            document.getElementById('levelProgress').style.width = squadData.progress + '%';
+            
+            // Update form
+            document.getElementById('squadNameInput').value = squadData.name;
+        }
+        
+        // Update loadSquadMembers function to fetch actual friends
+        async function loadSquadMembers() {
+            try {
+                const currentUser = JSON.parse(localStorage.getItem('user'));
+                if (!currentUser || !currentUser.email) {
+                    throw new Error('User not found or missing email');
+                }
+                
+                // First get the user data
+                const userResponse = await fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`);
+                
+                if (!userResponse.ok) {
+                    throw new Error(`API returned ${userResponse.status}: ${userResponse.statusText}`);
+                }
+                
+                const userData = await userResponse.json();
+                
+                if (!userData || !userData._id) {
+                    throw new Error('User ID not found in server response');
+                }
+                
+                // Now fetch friends using the retrieved user ID
+                const friendsResponse = await fetch(`http://localhost:5000/api/friends?userId=${userData._id}`);
+                
+                if (!friendsResponse.ok) {
+                    throw new Error(`API returned ${friendsResponse.status}: ${friendsResponse.statusText}`);
+                }
+                
+                const friendsData = await friendsResponse.json();
+                console.log('Friends data received:', friendsData);
+                
+                // Create squad members array with the current user as leader
+                const squadMembers = [{
+                    fullName: userData.fullName || 'You',
+                    username: userData.username || 'you',
+                    role: 'Squad Leader',
+                    contributions: '42 commits',
+                    joinedDate: '3 months ago'
+                }];
+                
+                // Add friends to squad members
+                if (friendsData && friendsData.length > 0) {
+                    // Add up to 5 friends to the squad
+                    const roles = ['Frontend Developer', 'Backend Developer', 'UI/UX Designer', 'Full Stack Developer', 'DevOps Engineer'];
+                    const contributions = ['38 commits', '45 commits', '27 commits', '31 commits', '22 commits'];
+                    const joinedDates = ['2 months ago', '3 months ago', '1 month ago', '2 weeks ago', '1 month ago'];
+                    
+                    friendsData.slice(0, 5).forEach((friend, index) => {
+                        squadMembers.push({
+                            fullName: friend.fullName || friend.username || 'Friend',
+                            username: friend.username || `friend${index}`,
+                            role: roles[index % roles.length],
+                            contributions: contributions[index % contributions.length],
+                            joinedDate: joinedDates[index % joinedDates.length]
+                        });
+                    });
+                }
+                
+                const membersContainer = document.querySelector('.squad-members');
+                if (membersContainer) {
+                    membersContainer.innerHTML = '';
+                    
+                    squadMembers.forEach(member => {
+                        const memberCard = document.createElement('div');
+                        memberCard.className = 'member-card';
+                        memberCard.innerHTML = `
+                            <div class="member-info">
+                                <div class="member-avatar">${getInitials(member.fullName)}</div>
+                                <div>
+                                    <div class="member-name">${member.fullName}</div>
+                                    <div class="member-role">${member.role}</div>
+                                </div>
+                            </div>
+                            <div class="member-stats">
+                                <div>${member.contributions}</div>
+                                <div>Joined ${member.joinedDate}</div>
+                            </div>
+                            <div class="member-actions">
+                                <button onclick="startDirectChat('${member.username}')">
+                                    <i class="fas fa-comment"></i> Chat
+                                </button>
+                                <button onclick="viewProfile('${member.username}')">
+                                    <i class="fas fa-user"></i> Profile
+                                </button>
+                            </div>
+                        `;
+                        membersContainer.appendChild(memberCard);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading squad members:', error);
+                
+                // Fallback to static data if API fails
+                loadFallbackMembers();
+            }
+        }
+        
+        // Update the loadFallbackMembers function to be more consistent
+        function loadFallbackMembers() {
+            // Fallback to mock data on error
+            const mockMembers = [
+                { 
+                    fullName: "You (Fallback)", 
+                    username: "you",
+                    role: "Squad Leader", 
+                    contributions: "42 commits", 
+                    joinedDate: "3 months ago" 
+                },
+                { 
+                    fullName: "Alex Johnson", 
+                    username: "alexj",
+                    role: "Frontend Developer", 
+                    contributions: "38 commits", 
+                    joinedDate: "2 months ago" 
+                },
+                { 
+                    fullName: "Sarah Williams", 
+                    username: "sarahw",
+                    role: "Backend Developer", 
+                    contributions: "45 commits", 
+                    joinedDate: "3 months ago" 
+                },
+                { 
+                    fullName: "Michael Chen", 
+                    username: "mikec",
+                    role: "UI/UX Designer", 
+                    contributions: "27 commits", 
+                    joinedDate: "1 month ago" 
+                }
+            ];
+            
+            const membersContainer = document.querySelector('.squad-members');
+            if (membersContainer) {
+                membersContainer.innerHTML = '';
+                
+                mockMembers.forEach(member => {
+                    const memberCard = document.createElement('div');
+                    memberCard.className = 'member-card';
+                    memberCard.innerHTML = `
+                        <div class="member-info">
+                            <div class="member-avatar">${getInitials(member.fullName)}</div>
+                            <div>
+                                <div class="member-name">${member.fullName}</div>
+                                <div class="member-role">${member.role}</div>
+                            </div>
+                        </div>
+                        <div class="member-stats">
+                            <div>${member.contributions}</div>
+                            <div>Joined ${member.joinedDate}</div>
+                        </div>
+                        <div class="member-actions">
+                            <button onclick="startDirectChat('${member.username}')">
+                                <i class="fas fa-comment"></i> Chat
+                            </button>
+                            <button onclick="viewProfile('${member.username}')">
+                                <i class="fas fa-user"></i> Profile
+                            </button>
+                        </div>
+                    `;
+                    membersContainer.appendChild(memberCard);
+                });
+            }
+        }
+
+        // Add these missing functions that are referenced in the code
+        function startDirectChat(username) {
+            alert(`Starting direct chat with ${username}`);
+        }
+
+        function viewProfile(username) {
+            alert(`Viewing profile of ${username}`);
+        }
+
+        function loadOnlineFriends() {
+            // Get current user from localStorage
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            if (!currentUser) {
+                console.error('User not found in localStorage');
+                loadFallbackFriends();
+                return;
+            }
+            
+            // We need to fetch the user's ID from the server since it's not in localStorage
+            fetch(`http://localhost:5000/api/user-by-email?email=${encodeURIComponent(currentUser.email)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch user data');
+                    }
+                    return response.json();
+                })
+                .then(userData => {
+                    if (!userData || !userData._id) {
+                        throw new Error('User ID not found in server response');
+                    }
+                    
+                    const userId = userData._id;
+                    
+                    // Now fetch friends using the retrieved user ID
+                    return fetch(`http://localhost:5000/api/friends?userId=${userId}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Failed to fetch friends');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Online friends data received:', data);
+                            
+                            // If we have friends data
+                            if (data && data.length > 0) {
+                                // Map to online friends format (randomly assign online status for demo)
+                                const friends = data.map(friend => {
+                                    // Create initials from name
+                                    const nameParts = friend.fullName ? friend.fullName.split(' ') : ['User'];
+                                    const initials = nameParts.length > 1 
+                                        ? `${nameParts[0][0]}${nameParts[1][0]}` 
+                                        : `${nameParts[0][0]}${nameParts[0][1] || ''}`;
+                                    
+                                    // Randomly determine online status for demo
+                                    const isOnline = Math.random() > 0.3;
+                                    const statuses = ["Online", "In a challenge", "Coding", "Looking for teammates"];
+                                    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                                    const offlineTime = Math.floor(Math.random() * 12) + 1;
+                                    
+                                    return {
+                                        id: friend._id,
+                                        name: friend.fullName || friend.username || 'Friend',
+                                        initials: initials.toUpperCase(),
+                                        online: isOnline,
+                                        status: isOnline ? randomStatus : `Last seen ${offlineTime}h ago`
+                                    };
+                                });
+                                
+                                renderOnlineFriends(friends);
+                            } else {
+                                // No friends found
+                                const friendsList = document.getElementById('onlineFriendsList');
+                                friendsList.innerHTML = `
+                                    <div class="empty-friends">
+                                        <p>No friends found</p>
+                                        <p>Add friends from the "Find Nearby Users" section or invite them by username.</p>
+                                    </div>
+                                `;
+                            }
+                        });
+                })
+                .catch(error => {
+                    console.error('Error fetching online friends:', error);
+                    loadFallbackFriends();
+                });
+        }
+        
+        function renderOnlineFriends(friends) {
+            const friendsList = document.getElementById('onlineFriendsList');
+            friendsList.innerHTML = friends.map(friend => `
+                <div class="friend-item">
+                    <div class="friend-avatar">
+                        ${friend.initials}
+                        ${friend.online ? '<span class="online-indicator"></span>' : ''}
+                    </div>
+                    <div class="friend-info">
+                        <div class="friend-name">${friend.name}</div>
+                        <div class="friend-status">${friend.status}</div>
+                    </div>
+                    <div class="friend-actions">
+                        <button class="friend-action-btn" title="Chat" onclick="chatWithFriend(${friend.id})">
+                            <i class="fas fa-comment"></i>
+                        </button>
+                        <button class="friend-action-btn" title="Call" onclick="callFriend(${friend.id})">
+                            <i class="fas fa-video"></i>
+                        </button>
+                        <button class="friend-action-btn" title="Add to Squad" onclick="addToSquad(${friend.id})">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function loadFallbackFriends() {
+            // Fallback to mock data on error
+            const mockFriends = [
+                { id: 5, name: "Mike Brown", initials: "MB", status: "Online", online: true },
+                { id: 6, name: "Emily Davis", initials: "ED", status: "In a challenge", online: true },
+                { id: 7, name: "Chris Wilson", initials: "CW", status: "Last seen 2h ago", online: false }
+            ];
+            
+            renderOnlineFriends(mockFriends);
+        }
+        
+        function loadChatMessages() {
+            // Get current user from localStorage
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            if (!currentUser) {
+                console.error('User not found in localStorage');
+                return;
+            }
+            
+            // Fetch squad chat messages from the server
+            fetch(`http://localhost:5000/api/squad-messages`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch chat messages');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Chat messages received:', data);
+                    
+                    const chatMessages = document.getElementById('chatMessages');
+                    
+                    if (data && data.length > 0) {
+                        chatMessages.innerHTML = data.map(message => {
+                            const isSelf = message.sender.email === currentUser.email;
+                            const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            
+                            return `
+                                <div class="message ${isSelf ? 'sent' : 'received'}">
+                                    ${!isSelf ? `<div class="message-sender">${message.sender.fullName || message.sender.username}</div>` : ''}
+                                    <div class="message-content">${message.content}</div>
+                                    <div class="message-time">${time}</div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        chatMessages.innerHTML = `
+                            <div class="empty-chat">
+                                <p>No messages yet</p>
+                                <p>Be the first to send a message to your squad!</p>
+                            </div>
+                        `;
+                    }
+                    
+                    // Scroll to bottom
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                })
+                .catch(error => {
+                    console.error('Error loading chat messages:', error);
+                    // Load fallback messages
+                    loadFallbackChatMessages();
+                });
+        }
+        
+        function loadFallbackChatMessages() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = `
+                <div class="message received">
+                    <div class="message-sender">System</div>
+                    <div class="message-content">Welcome to your squad chat! Messages will appear here.</div>
+                    <div class="message-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+            `;
+        }
+        
+        // Member interaction functions
+        function chatWithMember(memberId) {
+            // In a real app, this would open a private chat with the member
+            alert(`Opening private chat with member ID: ${memberId}`);
+        }
+        
+        function callMember(memberId) {
+            // In a real app, this would initiate a call with the member
+            alert(`Initiating call with member ID: ${memberId}`);
+        }
+        
+        // Friend interaction functions
+        function chatWithFriend(friendId) {
+            // In a real app, this would open a private chat with the friend
+            alert(`Opening private chat with friend ID: ${friendId}`);
+        }
+        
+        function callFriend(friendId) {
+            // In a real app, this would initiate a call with the friend
+            alert(`Initiating call with friend ID: ${friendId}`);
+        }
+        
+        function addToSquad(friendId) {
+            // In a real app, this would send an invitation to join the squad
+            alert(`Invitation sent to friend ID: ${friendId}`);
+            
+            // Update button to show invitation sent
+            event.target.disabled = true;
+            event.target.innerHTML = '<i class="fas fa-check"></i>';
+            event.target.title = 'Invitation Sent';
+        }
+
+        // Create a WebRTC peer connection
+        function createPeerConnection(userId, userName) {
+            // Check if we already have a connection for this user
+            if (peerConnections[userId]) {
+                console.log(`Peer connection for ${userName} (${userId}) already exists`);
+                return peerConnections[userId].connection;
+            }
+            
+            // STUN servers for NAT traversal
+            const configuration = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
+            };
+            
+            console.log(`Creating peer connection for ${userName} (${userId})`);
+            
+            const peerConnection = new RTCPeerConnection(configuration);
+            
+            // Store ICE candidates that arrive before the remote description is set
+            const iceCandidatesBuffer = [];
+            
+            peerConnections[userId] = {
+                connection: peerConnection,
+                iceCandidatesBuffer: iceCandidatesBuffer,
+                userName: userName
+            };
+            
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log(`Generated ICE candidate for ${userId}`);
+                    
+                    // Send the ICE candidate to the signaling server
+                    if (socket) {
+                        socket.emit('webrtc_ice_candidate', {
+                            roomId: roomId,
+                            targetUserId: userId,
+                            fromUserId: JSON.parse(localStorage.getItem('user'))._id || JSON.parse(localStorage.getItem('user')).email,
+                            candidate: event.candidate
+                        });
+                    }
+                } else {
+                    console.log('All ICE candidates have been generated for', userId);
+                }
+            };
+            
+            // Handle connection state changes
+            peerConnection.onconnectionstatechange = (event) => {
+                console.log(`Connection state for ${userName}: ${peerConnection.connectionState}`);
+                
+                // Update UI based on connection state
+                const participantElement = document.getElementById(`participant-${userId}`);
+                if (participantElement) {
+                    const statusElement = participantElement.querySelector('.participant-status');
+                    if (statusElement) {
+                        switch (peerConnection.connectionState) {
+                            case 'connected':
+                                statusElement.textContent = 'Connected';
+                                statusElement.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+                                break;
+                            case 'disconnected':
+                            case 'failed':
+                                statusElement.textContent = 'Disconnected';
+                                statusElement.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+                                break;
+                            case 'connecting':
+                                statusElement.textContent = 'Connecting...';
+                                statusElement.style.backgroundColor = 'rgba(255, 165, 0, 0.3)';
+                                break;
+                        }
+                    }
+                }
+            };
+            
+            // Handle ICE connection state changes
+            peerConnection.oniceconnectionstatechange = (event) => {
+                console.log(`ICE connection state for ${userName}: ${peerConnection.iceConnectionState}`);
+                
+                // If ICE connection fails, try to restart it
+                if (peerConnection.iceConnectionState === 'failed') {
+                    console.log('ICE connection failed, attempting to restart');
+                    peerConnection.restartIce();
+                }
+            };
+            
+            // Handle signaling state changes
+            peerConnection.onsignalingstatechange = (event) => {
+                console.log(`Signaling state for ${userName}: ${peerConnection.signalingState}`);
+            };
+            
+            // Handle incoming tracks (remote video/audio)
+            peerConnection.ontrack = (event) => {
+                console.log(`Received track from ${userName}:`, event.track.kind);
+                
+                // Create a new MediaStream if we don't have one yet
+                if (!event.streams || event.streams.length === 0) {
+                    const newStream = new MediaStream();
+                    newStream.addTrack(event.track);
+                    
+                    // Create or update video element for this user
+                    addRemoteVideoStream(userId, userName, newStream);
+                } else {
+                    // Create or update video element for this user with the provided stream
+                    addRemoteVideoStream(userId, userName, event.streams[0]);
+                }
+            };
+            
+            return peerConnection;
+        }
+
+        // Add a remote video stream to the UI
+        function addRemoteVideoStream(userId, userName, stream) {
+            console.log(`Adding remote stream for ${userName} (${userId})`);
+            
+            // Create participant element
+            const participantElement = document.createElement('div');
+            participantElement.className = 'video-participant';
+            participantElement.id = `participant-${userId}`;
+            
+            // Generate random color for placeholder
+            const colors = ['#2196F3', '#9C27B0', '#FF9800', '#E91E63', '#00BCD4'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            participantElement.innerHTML = `
+                <div class="participant-video camera-on">
+                    <video autoplay playsinline></video>
+                    <div class="video-placeholder" style="background-color: ${color};">
+                        <div class="participant-initials">${getInitials(userName)}</div>
+                    </div>
+                    <div class="microphone-indicator">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                </div>
+                <div class="participant-name">${userName}</div>
+                <div class="participant-status">Connecting...</div>
+            `;
+            
+            // Add to video grid
+            const participantsGrid = document.getElementById('videoParticipants');
+            if (participantsGrid) {
+                participantsGrid.appendChild(participantElement);
+            }
+            
+            // Set up video stream
+            const videoElement = participantElement.querySelector('video');
+            if (videoElement && stream) {
+                videoElement.srcObject = stream;
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play()
+                        .then(() => {
+                            // Hide placeholder when video is playing
+                            const placeholder = participantElement.querySelector('.video-placeholder');
+                            if (placeholder) {
+                                placeholder.style.display = 'none';
+                            }
+                        })
+                        .catch(e => console.error('Error playing remote video:', e));
+                };
+            }
+            
+            return participantElement;
+        }
+
+        // Function to search users
+        function searchUsers() {
+            const searchInput = document.getElementById('userSearchInput');
+            
+            // Check if the search input exists
+            if (!searchInput) {
+                console.log('Search input not found on this page');
+                return;
+            }
+            
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            
+            if (!searchTerm) {
+                // If search is empty, refresh the friends list
+                loadFriends();
+                return;
+            }
+            
+            // Get the current user
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            if (!currentUser || !currentUser.email) {
+                console.error('User not logged in');
+                return;
+            }
+            
+            // Show loading state
+            const friendsList = document.getElementById('friendsList');
+            if (friendsList) {
+                friendsList.innerHTML = '<div class="loading">Searching...</div>';
+            }
+            
+            // Search for users by name or email
+            fetch(`http://localhost:5000/api/search-users?term=${encodeURIComponent(searchTerm)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to search users');
+                    return response.json();
+                })
+                .then(users => {
+                    if (friendsList) {
+                        if (users.length === 0) {
+                            friendsList.innerHTML = '<div class="no-results">No users found</div>';
+                            return;
+                        }
+                        
+                        // Filter out the current user
+                        const filteredUsers = users.filter(user => user.email !== currentUser.email);
+                        
+                        if (filteredUsers.length === 0) {
+                            friendsList.innerHTML = '<div class="no-results">No other users found</div>';
+                            return;
+                        }
+                        
+                        // Display the search results
+                        friendsList.innerHTML = '';
+                        filteredUsers.forEach(user => {
+                            const userCard = document.createElement('div');
+                            userCard.className = 'friend-card';
+                            userCard.innerHTML = `
+                                <div class="friend-info">
+                                    <div class="friend-avatar">${getInitials(user.fullName || user.username)}</div>
+                                    <div class="friend-details">
+                                        <h3>${user.fullName || user.username}</h3>
+                                        <p>${user.email}</p>
+                                    </div>
+                                </div>
+                                <button class="add-friend-btn" onclick="sendFriendRequest('${user._id}')">
+                                    <i class="fas fa-user-plus"></i> Add
+                                </button>
+                            `;
+                            friendsList.appendChild(userCard);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching users:', error);
+                    if (friendsList) {
+                        friendsList.innerHTML = '<div class="error">Failed to search users</div>';
+                    }
+                });
+        }
+
+        // Add event listener for search input
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('userSearchInput');
+            if (searchInput) {
+                // Debounce the search function to avoid too many requests
+                let debounceTimer;
+                searchInput.addEventListener('input', function() {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(searchUsers, 500);
+                });
+            }
+        });
+
+        // Update the initializeSocket function to set the global socket variable
+        function initializeSocket() {
+            try {
+                const currentUser = JSON.parse(localStorage.getItem('user'));
+                if (!currentUser) {
+                    console.error('User not logged in');
+                    return;
+                }
+                
+                console.log('Initializing socket connection...');
+                
+                // Connect to Socket.IO server with better error handling and reconnection logic
+                socket = io('http://localhost:5000', {
+                    reconnection: true,
+                    reconnectionAttempts: 10,
+                    reconnectionDelay: 1000,
+                    reconnectionDelayMax: 5000,
+                    timeout: 20000,
+                    transports: ['websocket', 'polling'],
+                    forceNew: true
+                });
+                
+                // Connection event handlers
+                socket.on('connect', () => {
+                    console.log('Connected to socket server');
+                    
+                    // Update connection status
+                    const connectionStatus = document.getElementById('connectionStatus');
+                    if (connectionStatus) {
+                        connectionStatus.textContent = 'Online';
+                        connectionStatus.className = 'connection-status online';
+                    }
+                    
+                    // Join squad chat room
+                    socket.emit('join_squad', {
+                        email: currentUser.email,
+                        name: currentUser.fullName || currentUser.username,
+                        id: currentUser._id
+                    });
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.error('Socket connection error:', error);
+                    const connectionStatus = document.getElementById('connectionStatus');
+                    if (connectionStatus) {
+                        connectionStatus.textContent = 'Offline - Retrying...';
+                        connectionStatus.className = 'connection-status offline';
+                    }
+                });
+
+                socket.on('reconnect', (attemptNumber) => {
+                    console.log('Reconnected to socket server after', attemptNumber, 'attempts');
+                    const connectionStatus = document.getElementById('connectionStatus');
+                    if (connectionStatus) {
+                        connectionStatus.textContent = 'Online';
+                        connectionStatus.className = 'connection-status online';
+                    }
+                });
+
+                socket.on('reconnect_error', (error) => {
+                    console.error('Socket reconnection error:', error);
+                });
+
+                socket.on('disconnect', (reason) => {
+                    console.log('Disconnected from socket server:', reason);
+                    const connectionStatus = document.getElementById('connectionStatus');
+                    if (connectionStatus) {
+                        connectionStatus.textContent = 'Offline';
+                        connectionStatus.className = 'connection-status offline';
+                    }
+                });
+                
+                // Set up all the socket event handlers
+                setupSocketEventHandlers(currentUser);
+                
+            } catch (error) {
+                console.error('Error initializing socket:', error);
+            }
+        }
+
+        // Function to set up all socket event handlers
+        function setupSocketEventHandlers(currentUser) {
+            if (!socket) return;
+            
+            // Handle new squad messages
+            socket.on('new_squad_message', (message) => {
+                console.log('Chat message received:', message);
+                // Add the message to chat if it's from another user
+                if (message.sender.email !== currentUser.email) {
+                    addMessageToChat(message);
+                }
+            });
+
+            // Handle user joined squad
+            socket.on('user_joined_squad', (userData) => {
+                console.log('User joined squad:', userData);
+                // You can add UI notification here if needed
+            });
+
+            // Handle user left squad
+            socket.on('user_left_squad', (userData) => {
+                console.log('User left squad:', userData);
+                // You can add UI notification here if needed
+            });
+
+            // Handle WebRTC signaling events
+            socket.on('user_joined', (data) => {
+                console.log('User joined the call:', data);
+                
+                if (isInCall) {
+                    // Create a peer connection for the new user
+                    const peerConnection = createPeerConnection(data.userId, data.name);
+                    
+                    // Add our local stream to the connection
+                    if (localStream) {
+                        console.log(`Adding ${localStream.getTracks().length} local tracks to connection for ${data.name}`);
+                        localStream.getTracks().forEach(track => {
+                            peerConnection.addTrack(track, localStream);
+                        });
+                        
+                        // Create and send an offer
+                        peerConnection.createOffer({
+                            offerToReceiveAudio: true,
+                            offerToReceiveVideo: true
+                        })
+                        .then(offer => peerConnection.setLocalDescription(offer))
+                        .then(() => {
+                            console.log(`Sending offer to ${data.name}`);
+                            socket.emit('webrtc_offer', {
+                                roomId: roomId,
+                                targetUserId: data.userId,
+                                fromUserId: currentUser._id || currentUser.email,
+                                fromName: currentUser.fullName || currentUser.username || 'Anonymous',
+                                sdp: peerConnection.localDescription
+                            });
+                        })
+                        .catch(error => console.error('Error creating offer:', error));
+                    }
+                }
+            });
+            
+            // Handle WebRTC offer
+            socket.on('webrtc_offer', (data) => {
+                console.log('Received WebRTC offer:', data);
+                
+                if (isInCall) {
+                    // Create a peer connection for this user if it doesn't exist
+                    let peerConnection;
+                    if (!peerConnections[data.fromUserId]) {
+                        peerConnection = createPeerConnection(data.fromUserId, data.fromName || 'Remote User');
+                        
+                        // Add our local stream to the connection
+                        if (localStream) {
+                            console.log(`Adding ${localStream.getTracks().length} local tracks to connection for ${data.fromName}`);
+                            localStream.getTracks().forEach(track => {
+                                peerConnection.addTrack(track, localStream);
+                            });
+                        }
+                    } else {
+                        peerConnection = peerConnections[data.fromUserId].connection;
+                    }
+                    
+                    // Set the remote description from the offer
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp))
+                        .then(() => {
+                            console.log(`Creating answer for ${data.fromName}`);
+                            return peerConnection.createAnswer({
+                                offerToReceiveAudio: true,
+                                offerToReceiveVideo: true
+                            });
+                        })
+                        .then(answer => peerConnection.setLocalDescription(answer))
+                        .then(() => {
+                            // Send the answer back
+                            console.log(`Sending answer to ${data.fromName}`);
+                            socket.emit('webrtc_answer', {
+                                roomId: roomId,
+                                targetUserId: data.fromUserId,
+                                fromUserId: currentUser._id || currentUser.email,
+                                sdp: peerConnection.localDescription
+                            });
+                            
+                            // Apply any buffered ICE candidates
+                            const bufferedCandidates = peerConnections[data.fromUserId].iceCandidatesBuffer;
+                            if (bufferedCandidates && bufferedCandidates.length > 0) {
+                                console.log(`Applying ${bufferedCandidates.length} buffered ICE candidates`);
+                                bufferedCandidates.forEach(candidate => {
+                                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+                                        .catch(error => console.error('Error adding buffered ICE candidate:', error));
+                                });
+                                peerConnections[data.fromUserId].iceCandidatesBuffer = [];
+                            }
+                        })
+                        .catch(error => console.error('Error handling offer:', error));
+                }
+            });
+            
+            // Add other socket event handlers here
+            socket.on('webrtc_answer', (data) => {
+                console.log('Received WebRTC answer:', data);
+                
+                if (peerConnections[data.fromUserId]) {
+                    const peerConnection = peerConnections[data.fromUserId].connection;
+                    
+                    // Only set remote description if we're in the right state
+                    if (peerConnection.signalingState === 'have-local-offer') {
+                        peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp))
+                            .then(() => {
+                                // Apply any buffered ICE candidates
+                                const bufferedCandidates = peerConnections[data.fromUserId].iceCandidatesBuffer;
+                                if (bufferedCandidates && bufferedCandidates.length > 0) {
+                                    console.log(`Applying ${bufferedCandidates.length} buffered ICE candidates`);
+                                    bufferedCandidates.forEach(candidate => {
+                                        peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+                                            .catch(error => console.error('Error adding buffered ICE candidate:', error));
+                                    });
+                                    peerConnections[data.fromUserId].iceCandidatesBuffer = [];
+                                }
+                            })
+                            .catch(error => console.error('Error handling answer:', error));
+                    } else {
+                        console.log(`Cannot set remote description in state: ${peerConnection.signalingState}`);
+                    }
+                }
+            });
+            
+            socket.on('webrtc_ice_candidate', (data) => {
+                console.log('Received ICE candidate:', data);
+                
+                if (peerConnections[data.fromUserId]) {
+                    const peerConnection = peerConnections[data.fromUserId].connection;
+                    const candidate = data.candidate;
+                    
+                    // Check if we have a remote description set
+                    if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+                        // If we have a remote description, add the ICE candidate immediately
+                        peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+                            .catch(error => console.error('Error adding ICE candidate:', error));
+                    } else {
+                        // Otherwise, buffer the ICE candidate for later
+                        console.log('Buffering ICE candidate until remote description is set');
+                        peerConnections[data.fromUserId].iceCandidatesBuffer.push(candidate);
+                    }
+                }
+            });
+            
+            socket.on('user_left', (data) => {
+                console.log('User left the call:', data);
+                
+                // Remove the user's video
+                const participantElement = document.getElementById(`participant-${data.userId}`);
+                if (participantElement) {
+                    participantElement.remove();
+                }
+                
+                // Close and remove the peer connection
+                if (peerConnections[data.userId]) {
+                    peerConnections[data.userId].connection.close();
+                    delete peerConnections[data.userId];
+                }
+            });
+            
+            socket.on('existing_users', (users) => {
+                console.log('Existing users in call:', users);
+                
+                // Create peer connections for each existing user
+                users.forEach(user => {
+                    if (isInCall) {
+                        // Create a peer connection for this user
+                        const peerConnection = createPeerConnection(user.userId, user.name);
+                        
+                        // Add our local stream to the connection
+                        if (localStream) {
+                            localStream.getTracks().forEach(track => {
+                                peerConnection.addTrack(track, localStream);
+                            });
+                            
+                            // Create and send an offer
+                            peerConnection.createOffer()
+                                .then(offer => peerConnection.setLocalDescription(offer))
+                                .then(() => {
+                                    socket.emit('webrtc_offer', {
+                                        roomId: roomId,
+                                        targetUserId: user.userId,
+                                        fromUserId: currentUser._id || currentUser.email,
+                                        fromName: currentUser.fullName || currentUser.username || 'Anonymous',
+                                        sdp: peerConnection.localDescription
+                                    });
+                                })
+                                .catch(error => console.error('Error creating offer:', error));
+                        }
+                    }
+                });
+            });
+        }
+
+        // Call initializeSocket when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize socket connection
+            initializeSocket();
+            
+            // Other initialization code...
+        });
+
+        // Add this function after the setupSocketEventHandlers function
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) return; // Don't send empty messages
+            
+            // Get current user
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            if (!currentUser) {
+                console.error('User not logged in');
+                return;
+            }
+            
+            // Create message object
+            const messageData = {
+                content: message,
+                sender: {
+                    id: currentUser._id,
+                    email: currentUser.email,
+                    fullName: currentUser.fullName || currentUser.username,
+                },
+                timestamp: new Date().toISOString()
+            };
+            
+            // Emit the message through socket
+            if (socket && socket.connected) {
+                socket.emit('squad_message', messageData);
+                
+                // Add message to chat immediately (optimistic UI update)
+                addMessageToChat(messageData);
+                
+                // Clear input
+                messageInput.value = '';
+            } else {
+                console.error('Socket connection not available');
+                alert('Unable to send message. Please check your connection.');
+            }
+        }
+
+        // Add this helper function to display messages
+        function addMessageToChat(message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            
+            // Check if this message is from the current user
+            const isSelf = message.sender.email === currentUser.email;
+            
+            // Create message element
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${isSelf ? 'sent' : 'received'}`;
+            
+            // Format timestamp
+            const time = new Date(message.timestamp).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            // Set message HTML
+            messageElement.innerHTML = `
+                ${!isSelf ? `<div class="message-sender">${message.sender.fullName}</div>` : ''}
+                <div class="message-content">${message.content}</div>
+                <div class="message-time">${time}</div>
+            `;
+            
+            // Add message to chat
+            chatMessages.appendChild(messageElement);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Add this function to check device availability
+        async function checkDeviceAvailability() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                return true;
+            } catch (error) {
+                if (error.name === 'NotReadableError') {
+                    return false; // Device is in use
+                }
+                return true; // Other errors might be permissions, which we handle separately
+            }
+        }
+<<<<<<< HEAD
       });
 
       // Add this before the Socket.IO initialization
@@ -1472,6 +3475,8 @@
               timeout = setTimeout(later, wait);
           };
       }
+=======
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
     </script>
 
     <!-- Add this right before the closing </body> tag -->

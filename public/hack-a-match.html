@@ -7,6 +7,54 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Make sure these are at the top of your style section */
+        :root {
+            --bg-color: #0d1117;
+            --nav-bg: #161b22;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
+            --secondary-text: #8b949e;
+            --link-color: #58a6ff;
+            --primary-color: #077b32;
+            --card-bg: #1a1a1a;
+        }
+        
+        /* Basic hamburger styling */
+        .hamburg {
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+            display: none;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .hamburg {
+                display: block !important;
+            }
+            
+            nav .links {
+                display: none;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .sidebar.sidebar-active {
+                display: block !important;
+                position: fixed;
+                top: 80px;
+                left: 0;
+                width: 250px;
+                height: calc(100vh - 80px);
+                z-index: 1000;
+                background: var(--nav-bg);
+                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+                overflow-y: auto;
+            }
+        }
+
         .hack-container {
             display: grid;
             grid-template-columns: 280px 1fr 300px;
@@ -221,6 +269,26 @@
             .hack-container {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto auto auto;
+            }
+            
+            .hamburg {
+                display: block;
+            }
+            
+            .sidebar {
+                display: none;
+                position: fixed;
+                top: 80px;
+                left: 0;
+                width: 250px;
+                height: calc(100vh - 80px);
+                z-index: 1000;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+                overflow-y: auto;
+            }
+            
+            .sidebar-active {
+                display: block;
             }
         }
 
@@ -453,6 +521,26 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+
+        /* Add these styles for the friend request button */
+        .user-action-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .user-action-btn:hover {
+            transform: scale(1.1);
+            background: var(--secondary-color);
+        }
     </style>
 </head>
 <body>
@@ -466,15 +554,7 @@
                 <div class="link"><a href="#" class="active">Hack a Match</a></div>
                 <div class="link"><a href="#" onclick="logout()">Logout</a></div>
             </div>
-            <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
-        </div>
-        <div class="dropdown">
-            <div class="links">
-                <a href="dashboard.html">Dashboard</a>
-                <a href="#" class="active">Hack a Match</a>
-                <a href="#" onclick="logout()">Logout</a>
-                <i class="fa-solid fa-xmark cancel" onclick="cancel()"></i>
-            </div>
+            <i class="fa-solid fa-bars hamburg" id="hamburgerBtn"></i>
         </div>
     </nav>
 
@@ -613,6 +693,25 @@
     </div>
 
     <script>
+        // Add this at the top of your script section (before any other functions)
+        function getApiBaseUrl() {
+            // Check if we're running on localhost
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return 'http://localhost:3001';
+            }
+            
+            // Replace this placeholder with your actual Vercel API URL
+            if (window.location.hostname.includes('vercel.app')) {
+                return 'https://codersmeet-server.vercel.app'; // Replace with your actual Vercel API URL
+            }
+            
+            // For other environments, use relative URLs
+            return '';
+        }
+
+        // Define this once at the beginning of your script
+        const API_BASE_URL = getApiBaseUrl();
+
         // Replace the existing DOMContentLoaded event listener section with this updated version
         document.addEventListener('DOMContentLoaded', function() {
             const user = localStorage.getItem('user');
@@ -620,6 +719,9 @@
                 window.location.href = 'login.html';
                 return;
             }
+
+            // Load friend requests when page loads
+            loadFriendRequests();
 
             // Move the location button event listener outside of DOMContentLoaded
             const enableLocationBtn = document.getElementById('enableLocationBtn');
@@ -631,23 +733,49 @@
                 });
             }
 
+            // Set up the tab navigation
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs and contents
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to current tab and content
+                    this.classList.add('active');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+
             // Rest of your DOMContentLoaded code...
+
+            const hamburgerButton = document.querySelector('.hamburg');
+            if (hamburgerButton) {
+                console.log("Hamburg button found, adding click listener");
+                hamburgerButton.addEventListener('click', function() {
+                    console.log("Hamburg button clicked");
+                    hamburg();
+                });
+            } else {
+                console.error("Hamburg button not found");
+            }
         });
 
         // Update the beginning of loadNearbyUsers function
-            async function loadNearbyUsers() {
+        async function loadNearbyUsers() {
             console.log('loadNearbyUsers called'); // Debug log
             const locationStatus = document.getElementById('locationStatus');
             const membersList = document.getElementById('communityMembersList');
             
-                try {
+            try {
                 // Get current user
-                    const userString = localStorage.getItem('user');
-                    if (!userString) {
-                        throw new Error('User not logged in');
-                    }
-                    const currentUser = JSON.parse(userString);
-                    
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    throw new Error('User not logged in');
+                }
+                const currentUser = JSON.parse(userString);
+                
                 // Update UI to loading state
                 locationStatus.innerHTML = `
                     <div class="location-status loading">
@@ -666,7 +794,7 @@
                     async function(position) {
                         try {
                             console.log('Location permission granted'); // Debug log
-                    const { latitude, longitude } = position.coords;
+                            const { latitude, longitude } = position.coords;
                             
                             // Update location status
                             locationStatus.innerHTML = `
@@ -677,33 +805,35 @@
                             `;
 
                             // Update user's location on server
-                            const locationUpdate = await fetch('http://localhost:5000/api/users/location-by-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: currentUser.email,
-                            latitude,
-                            longitude
-                        })
-                    });
-                    
+                            const locationUpdate = await fetch(`${API_BASE_URL}/api/users/location-by-email`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    email: currentUser.email,
+                                    latitude,
+                                    longitude
+                                })
+                            });
+                            
                             if (!locationUpdate.ok) {
-                                throw new Error('Failed to update location');
+                                const errorData = await locationUpdate.json();
+                                throw new Error(errorData.error || 'Failed to update location');
                             }
                             
                             // Fetch nearby users
-                    const response = await fetch(
-                        `http://localhost:5000/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
-                    );
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch nearby users');
-                    }
-                    
-                    const results = await response.json();
-                    
+                            const response = await fetch(
+                                `${API_BASE_URL}/api/users/nearby-by-email?email=${encodeURIComponent(currentUser.email)}&latitude=${latitude}&longitude=${longitude}`
+                            );
+                            
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.error || 'Failed to fetch nearby users');
+                            }
+                            
+                            const results = await response.json();
+                            
                             // Update UI with results
-                    if (!results.length || !results.some(range => range.users.length > 0)) {
+                            if (!results.length || !results.some(range => range.users && range.users.length > 0)) {
                                 membersList.innerHTML = `
                                     <div class="empty-state">
                                         <i class="fas fa-user-friends"></i>
@@ -711,40 +841,53 @@
                                         <p>Try expanding your search range or check back later!</p>
                                     </div>
                                 `;
-                        return;
-                    }
-                    
-                            // Display results by range
-                    let usersHTML = '';
-                    results.forEach(range => {
-                        if (range.users.length > 0) {
-                            usersHTML += `<div class="range-header">${range.range}km Range</div>`;
-                            usersHTML += range.users.map(user => {
-                                const initials = user.fullName
-                                    .split(' ')
-                                    .map(name => name[0])
-                                    .join('')
-                                    .toUpperCase();
                                 
-                                return `
-                                <div class="user-item" data-user-id="${user._id}">
-                                    <div class="user-avatar">${initials}</div>
-                                    <div class="user-info">
-                                        <div class="user-name">${user.fullName}</div>
-                                                    <div class="user-status">${user.distance.toFixed(1)}km away</div>
-                                    </div>
-                                    <div class="user-actions">
-                                                    <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
-                                            <i class="fas fa-user-plus"></i>
+                                // Update status to success even if no users found
+                                locationStatus.innerHTML = `
+                                    <div>
+                                        <i class="fas fa-check-circle"></i> 
+                                        Location enabled - no nearby coders found
+                                        <button onclick="loadNearbyUsers()" class="refresh-btn">
+                                            <i class="fas fa-sync-alt"></i>
                                         </button>
                                     </div>
-                                </div>
                                 `;
-                            }).join('');
-                        }
-                    });
-                    
-                    membersList.innerHTML = usersHTML;
+                                return;
+                            }
+                            
+                            // Display results by range
+                            let usersHTML = '';
+                            results.forEach(range => {
+                                if (range.users && range.users.length > 0) {
+                                    usersHTML += `<div class="range-header">${range.range}km Range</div>`;
+                                    usersHTML += range.users.map(user => {
+                                        const initials = user.fullName
+                                            ? user.fullName
+                                                .split(' ')
+                                                .map(name => name[0])
+                                                .join('')
+                                                .toUpperCase()
+                                            : 'U';
+                                        
+                                        return `
+                                        <div class="user-item" data-user-id="${user._id}">
+                                            <div class="user-avatar">${initials}</div>
+                                            <div class="user-info">
+                                                <div class="user-name">${user.fullName || 'Unknown User'}</div>
+                                                <div class="user-status">${user.distance.toFixed(1)}km away</div>
+                                            </div>
+                                            <div class="user-actions">
+                                                <button class="user-action-btn" onclick="addFriend('${user.email}')" title="Add Friend">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        `;
+                                    }).join('');
+                                }
+                            });
+                            
+                            membersList.innerHTML = usersHTML;
                             
                             // Update status to success
                             locationStatus.innerHTML = `
@@ -753,13 +896,24 @@
                                     Location enabled - showing nearby coders
                                     <button onclick="loadNearbyUsers()" class="refresh-btn">
                                         <i class="fas fa-sync-alt"></i>
-                            </button>
+                                    </button>
                                 </div>
                             `;
                             
                         } catch (error) {
                             console.error('Error processing location:', error);
-                            handleLocationError(error);
+                            const errorMessage = error.message || 'Unknown error occurred';
+                            
+                            // Add more detailed error message
+                            locationStatus.innerHTML = `
+                                <div class="error-message">
+                                    <h4>Error Finding Nearby Coders</h4>
+                                    <p>${errorMessage}</p>
+                                    <button onclick="loadNearbyUsers()" class="enable-location-btn">
+                                        <i class="fas fa-redo"></i> Try Again
+                                    </button>
+                                </div>
+                            `;
                         }
                     },
                     function(error) {
@@ -851,11 +1005,19 @@
 
         // Mobile menu functions
         function hamburg() {
-            document.querySelector('.dropdown').style.display = 'block';
+            console.log("Hamburg function called"); // Debug log
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('sidebar-active');
+                console.log("Toggled sidebar-active class"); // Debug log
+            } else {
+                console.error("Sidebar element not found");
+            }
         }
         
         function cancel() {
-            document.querySelector('.dropdown').style.display = 'none';
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.remove('sidebar-active');
         }
 
         // Load friend requests
@@ -871,7 +1033,7 @@
                     return;
                 }
                 
-                const response = await fetch(`http://localhost:5000/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
+                const response = await fetch(`${API_BASE_URL}/api/friend-requests?email=${encodeURIComponent(currentUser.email)}`);
                 if (!response.ok) {
                     throw new Error('Failed to load friend requests');
                 }
@@ -933,7 +1095,7 @@
         // Handle accept/reject actions
         async function respondToRequest(requestId, action) {
             try {
-                const response = await fetch('http://localhost:5000/api/friend-request-response', {
+                const response = await fetch(`${API_BASE_URL}/api/friend-request-response`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1051,6 +1213,55 @@
                 return 'Unknown';
             }
         }
+
+        // Add friend function
+        async function addFriend(receiverEmail) {
+            try {
+                const userString = localStorage.getItem('user');
+                if (!userString) {
+                    alert('You must be logged in to add friends');
+                    return;
+                }
+                
+                const currentUser = JSON.parse(userString);
+                
+                const response = await fetch(`${API_BASE_URL}/api/send-friend-request`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderEmail: currentUser.email,
+                        receiverEmail: receiverEmail
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to send friend request');
+                }
+                
+                // Show success message
+                alert('Friend request sent successfully!');
+                
+            } catch (error) {
+                console.error('Error sending friend request:', error);
+                alert(error.message);
+            }
+        }
+
+        // Place this at the end of your body, just before the closing </body> tag
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simple hamburger toggle
+            const hamburgerBtn = document.querySelector('.hamburg');
+            const sidebar = document.querySelector('.sidebar');
+            
+            if (hamburgerBtn && sidebar) {
+                hamburgerBtn.addEventListener('click', function() {
+                    sidebar.classList.toggle('sidebar-active');
+                    console.log('Hamburger clicked, sidebar toggled');
+                });
+            }
+        });
     </script>
 </body>
 </html> 

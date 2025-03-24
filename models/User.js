@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
     fullName: {
@@ -42,9 +43,19 @@ const userSchema = new mongoose.Schema({
             default: 'Point'
         },
         coordinates: {
+<<<<<<< HEAD
             type: [Number],
             default: [0, 0]
         }
+=======
+            type: [Number],  // [longitude, latitude]
+            default: [0, 0]
+        }
+    },
+    lastLocationUpdate: {
+        type: Date,
+        default: null
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
     },
     locationUpdatedAt: { type: Date }
 }, { 

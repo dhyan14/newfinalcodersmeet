@@ -1,0 +1,15 @@
+/* Ensure the menu is properly styled when active */
+.nav-menu {
+  display: none;
+  /* other styles */
+}
+
+.nav-menu.active {
+  display: block; /* or flex, depending on your layout */
+}
+
+/* Make sure the hamburger button is clickable */
+.hamburger-button {
+  cursor: pointer;
+  z-index: 100;
+} 

@@ -15,16 +15,15 @@
     console.log('Initializing fallback chat...');
     
     // Get the current user
-    currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    currentUser = localStorage.getItem('user') 
+      ? JSON.parse(localStorage.getItem('user')).username 
+      : 'TESTUSER';
     
     // Get the squad ID from various possible sources
-    fallbackSquadId = document.getElementById('squad-id')?.value || 
-              document.querySelector('[data-squad-id]')?.dataset.squadId || 
-              new URLSearchParams(window.location.search).get('squadId') || 
-              window.location.pathname.split('/').pop();
+    fallbackSquadId = document.getElementById('squad-id')?.value || 'squad.html';
     
     console.log('Fallback Chat - Squad ID:', fallbackSquadId);
-    console.log('Fallback Chat - Current user:', currentUser.username || currentUser.email || 'Anonymous');
+    console.log('Fallback Chat - Current user:', currentUser);
     
     // Test if API is available
     testApiAvailability();
@@ -177,13 +176,13 @@
     const message = messageInput.value.trim();
     if (!message) return;
     
-    const senderName = currentUser.username || currentUser.fullName || currentUser.email || 'Anonymous';
+    const senderName = currentUser || 'Anonymous';
     
     const messageData = {
       squadId: fallbackSquadId,
       message: message,
       sender: senderName,
-      senderId: currentUser._id || 'anonymous',
+      senderId: currentUser ? currentUser._id || 'anonymous' : 'anonymous',
       timestamp: new Date().toISOString()
     };
     
@@ -247,7 +246,7 @@
     messageElement.className = 'message';
     
     // Determine if this is the current user's message
-    const isCurrentUser = data.sender === (currentUser.username || currentUser.fullName || currentUser.email);
+    const isCurrentUser = data.sender === (currentUser || 'Anonymous');
     messageElement.classList.add(isCurrentUser ? 'sent' : 'received');
     
     // Format the timestamp
@@ -295,11 +294,206 @@
 
   // Expose functions globally with a unique namespace
   window.FallbackChat = {
-    sendMessage: sendMessage,
-    startPolling: startPolling,
-    stopPolling: function() { isPolling = false; },
-    useLocalStorage: function(use) { useLocalStorage = use; }
+    useLocalStorage: false,
+    pollingInterval: null,
+    squadId: null,
+    currentUser: null,
+
+    init: function() {
+      try {
+        console.log('Initializing fallback chat...');
+        
+        // Get squad ID with more fallbacks
+        this.squadId = document.getElementById('squad-id')?.value || 
+                      document.querySelector('[data-squad-id]')?.dataset.squadId ||
+                      new URLSearchParams(window.location.search).get('squadId') ||
+                      'squad'; // Default fallback
+        
+        console.log('Fallback using squad ID:', this.squadId);
+        
+        // Get user info
+        let userData;
+        try {
+          userData = JSON.parse(localStorage.getItem('user') || '{}');
+        } catch (e) {
+          userData = { username: 'Anonymous' };
+        }
+        
+        this.currentUser = userData.username || 'Anonymous';
+        
+        this.setupEventListeners();
+        return true;
+      } catch (error) {
+        console.error('Fallback chat initialization error:', error);
+        return false;
+      }
+    },
+
+    setupEventListeners: function() {
+      // Set up event listeners for the chat interface
+      const sendButton = document.getElementById('send-button');
+      if (sendButton) {
+        sendButton.addEventListener('click', () => this.sendMessage());
+      }
+      
+      const messageInput = document.getElementById('message-input');
+      if (messageInput) {
+        messageInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.sendMessage();
+          }
+        });
+      }
+      
+      console.log('Fallback chat event listeners set up');
+    },
+
+    setLocalStorage: function(value) {
+      this.useLocalStorage = Boolean(value);
+      console.log('Fallback storage mode:', this.useLocalStorage ? 'local' : 'server');
+    },
+
+    startPolling: function() {
+      if (this.pollingInterval) {
+        clearInterval(this.pollingInterval);
+      }
+      
+      console.log('Starting fallback message polling...');
+      this.checkForNewMessages(); // Check immediately
+      
+      this.pollingInterval = setInterval(() => {
+        this.checkForNewMessages();
+      }, 3000);
+    },
+
+    checkForNewMessages: function() {
+      if (this.useLocalStorage) {
+        this.getLocalMessages();
+      } else {
+        this.getServerMessages();
+      }
+    },
+
+    getLocalMessages: function() {
+      const messages = JSON.parse(localStorage.getItem(`chat_${this.squadId}`) || '[]');
+      this.displayMessages(messages);
+    },
+
+    getServerMessages: function() {
+      fetch(`/api/squad-messages?squadId=${this.squadId}`)
+        .then(response => response.json())
+        .then(messages => this.displayMessages(messages))
+        .catch(error => {
+          console.error('Error fetching messages:', error);
+          this.useLocalStorage = true;
+          this.getLocalMessages();
+        });
+    },
+
+    displayMessages: function(messages) {
+      const container = document.getElementById('chat-messages');
+      if (!container) return;
+
+      // Sort messages by timestamp
+      messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      // Only keep the latest 50 messages to avoid performance issues
+      if (messages.length > 50) {
+        messages = messages.slice(messages.length - 50);
+      }
+
+      container.innerHTML = messages.map(msg => `
+        <div class="message ${msg.sender === this.currentUser ? 'sent' : 'received'}">
+          ${msg.sender !== this.currentUser ? `<div class="message-sender">${msg.sender}</div>` : ''}
+          <div class="message-content">${msg.content || msg.message}</div>
+          <div class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+        </div>
+      `).join('');
+      
+      // Scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    },
+
+    sendMessage: function() {
+      const input = document.getElementById('message-input');
+      if (!input) return;
+      
+      const message = input.value.trim();
+      if (!message) return;
+      
+      // Create message object
+      const messageData = {
+        squadId: this.squadId,
+        content: message,
+        sender: this.currentUser,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Save to localStorage
+      this.saveMessageToLocalStorage(messageData);
+      
+      // Display the message
+      this.displayMessage(messageData);
+      
+      // Clear input
+      input.value = '';
+    },
+
+    saveMessageToLocalStorage: function(message) {
+      // Get existing messages
+      const storageKey = `chat_messages_${this.squadId}`;
+      let messages = [];
+      
+      try {
+        messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      } catch (e) {
+        console.error('Error parsing stored messages:', e);
+      }
+      
+      // Add new message
+      messages.push(message);
+      
+      // Save back to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+      console.log('Message saved to localStorage');
+    },
+
+    displayMessage: function(message) {
+      const container = document.getElementById('chat-messages');
+      if (!container) return;
+      
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${message.sender === this.currentUser ? 'sent' : 'received'}`;
+      
+      const time = new Date(message.timestamp).toLocaleTimeString();
+      
+      messageEl.innerHTML = `
+        ${message.sender !== this.currentUser ? `<div class="message-sender">${message.sender}</div>` : ''}
+        <div class="message-content">${message.content || message.message}</div>
+        <div class="message-time">${time}</div>
+      `;
+      
+      container.appendChild(messageEl);
+      container.scrollTop = container.scrollHeight;
+    },
+
+    // Add a method to clear localStorage messages when needed
+    clearMessages: function() {
+      if (confirm('Are you sure you want to clear all chat messages? This cannot be undone.')) {
+        localStorage.removeItem(`chat_messages_${this.squadId}`);
+        const container = document.getElementById('chat-messages');
+        if (container) container.innerHTML = '';
+      }
+    },
+
+    // Add more methods as needed
   };
+
+  // Initialize fallback chat when the page loads
+  document.addEventListener('DOMContentLoaded', () => {
+    window.FallbackChat.init();
+  });
 
   // Add this function to the fallback chat implementation
   function updateConnectionStatus(message, status) {

@@ -3,7 +3,6 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
-const http = require('http');
 
 // Import models
 const User = require('./models/User');
@@ -12,8 +11,8 @@ const FriendRequest = require('./models/FriendRequest');
 const SquadChat = require('./models/SquadChat');
 const Squad = require('./models/Squad');
 
-// Create Express app and HTTP server
 const app = express();
+<<<<<<< HEAD
 
 // Middleware setup - order is important
 app.use(cors());
@@ -172,6 +171,53 @@ apiRouter.post('/users/location', async (req, res, next) => {
     
     if (!userId || !latitude || !longitude) {
       return res.status(400).json({ error: 'Missing required fields' });
+=======
+
+// Update CORS configuration
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production' 
+        ? [process.env.FRONTEND_URL || 'https://newfinalcodersmeet.vercel.app', 'https://your-frontend-domain.vercel.app']
+        : ['http://localhost:3001', 'http://localhost:3000'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    optionsSuccessStatus: 204,
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Other middleware
+app.use(express.json());
+app.use(express.static('public'));
+
+// Add better error logging
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+    next();
+});
+
+// MongoDB Connection
+let isConnected = false;
+
+const connectToDatabase = async () => {
+    if (isConnected) return;
+
+    try {
+        console.log('Connecting to MongoDB...');
+        await mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 10000
+        });
+        isConnected = true;
+        console.log('MongoDB Connected');
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        isConnected = false;
+        throw error;
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
     }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -316,6 +362,58 @@ apiRouter.post('/check-username', async (req, res) => {
     }
 });
 
+// Get nearby users endpoint - simplified version
+app.get('/api/users/nearby-by-email', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { email, latitude, longitude } = req.query;
+        
+        console.log('Nearby request params:', { email, latitude, longitude });
+        
+        if (!email || !latitude || !longitude) {
+            return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
+        }
+        
+        // Find the current user to exclude them from results
+        const currentUser = await User.findOne({ email });
+        if (!currentUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log('Current user found:', currentUser._id);
+        
+        // Get all users except current user - no location filtering
+        const allUsers = await User.find({ 
+            _id: { $ne: currentUser._id } 
+        }).limit(20);
+        
+        // Add mock distance calculation
+        const usersWithDistance = allUsers.map(user => {
+            return {
+                _id: user._id,
+                fullName: user.fullName,
+                username: user.username,
+                email: user.email,
+                distance: Math.random() * 10 // Random distance between 0-10km
+            };
+        });
+        
+        // Return results
+        res.json([
+            {
+                range: 10,
+                users: usersWithDistance
+            }
+        ]);
+    } catch (error) {
+        console.error('Error finding nearby users:', error);
+        res.status(500).json({ 
+            error: 'Failed to find nearby users', 
+            details: error.message 
+        });
+    }
+});
+
 // Get user by ID
 apiRouter.get('/users/:id', async (req, res) => {
     try {
@@ -347,6 +445,227 @@ apiRouter.get('/users/:id', async (req, res) => {
     }
 });
 
+// Update user location with debugging
+app.post('/api/users/location-by-email', async (req, res) => {
+    try {
+        console.log('[Vercel] Location update request received');
+        await connectToDatabase();
+        console.log('[Vercel] Database connected');
+        
+        const { email, latitude, longitude } = req.body;
+        
+        console.log('Updating location for:', { email, latitude, longitude }); // Debug log
+        
+        if (!email || latitude === undefined || longitude === undefined) {
+            return res.status(400).json({ error: 'Email, latitude, and longitude are required' });
+        }
+        
+        // Update user's location in the database
+        const user = await User.findOneAndUpdate(
+            { email }, 
+            { 
+                location: {
+                    type: 'Point',
+                    coordinates: [longitude, latitude] // GeoJSON format: [longitude, latitude]
+                },
+                lastLocationUpdate: new Date()
+            },
+            { new: true }
+        );
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log('Location updated for user:', user._id); // Debug log
+        console.log('Updated location:', user.location); // Debug log
+        
+        console.log('[Vercel] Location updated successfully');
+        res.json({ success: true, message: 'Location updated successfully' });
+    } catch (error) {
+        console.error('[Vercel] Error updating location:', error);
+        res.status(500).json({ error: 'Failed to update location', details: error.message });
+    }
+});
+
+// Send friend request
+app.post('/api/send-friend-request', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { senderEmail, receiverEmail } = req.body;
+        
+        if (!senderEmail || !receiverEmail) {
+            return res.status(400).json({ error: 'Sender and receiver emails are required' });
+        }
+        
+        if (senderEmail === receiverEmail) {
+            return res.status(400).json({ error: 'Cannot send friend request to yourself' });
+        }
+        
+        // Find sender and receiver
+        const sender = await User.findOne({ email: senderEmail });
+        const receiver = await User.findOne({ email: receiverEmail });
+        
+        if (!sender || !receiver) {
+            return res.status(404).json({ error: 'Sender or receiver not found' });
+        }
+        
+        // Check if friend request already exists
+        const existingRequest = await FriendRequest.findOne({
+            $or: [
+                { sender: sender._id, receiver: receiver._id },
+                { sender: receiver._id, receiver: sender._id }
+            ]
+        });
+        
+        if (existingRequest) {
+            return res.status(400).json({ error: 'Friend request already exists' });
+        }
+        
+        // Check if they are already friends
+        if (sender.connections && sender.connections.includes(receiver._id)) {
+            return res.status(400).json({ error: 'Already connected with this user' });
+        }
+        
+        // Create new friend request
+        const newFriendRequest = new FriendRequest({
+            sender: sender._id,
+            receiver: receiver._id,
+            status: 'pending',
+            createdAt: new Date()
+        });
+        
+        await newFriendRequest.save();
+        
+        res.status(201).json({ 
+            success: true, 
+            message: 'Friend request sent successfully'
+        });
+    } catch (error) {
+        console.error('Error sending friend request:', error);
+        res.status(500).json({ error: 'Failed to send friend request', details: error.message });
+    }
+});
+
+// Get friend requests
+app.get('/api/friend-requests', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { email } = req.query;
+        
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+        
+        // Find user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Find pending friend requests where user is the receiver
+        const requests = await FriendRequest.find({
+            receiver: user._id,
+            status: 'pending'
+        }).populate('sender', 'fullName email');
+        
+        // Calculate time ago for each request
+        const requestsWithTimeAgo = requests.map(request => {
+            const createdAt = new Date(request.createdAt);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - createdAt) / 1000);
+            
+            let timeAgo;
+            if (diffInSeconds < 60) {
+                timeAgo = `${diffInSeconds} seconds ago`;
+            } else if (diffInSeconds < 3600) {
+                timeAgo = `${Math.floor(diffInSeconds / 60)} minutes ago`;
+            } else if (diffInSeconds < 86400) {
+                timeAgo = `${Math.floor(diffInSeconds / 3600)} hours ago`;
+            } else {
+                timeAgo = `${Math.floor(diffInSeconds / 86400)} days ago`;
+            }
+            
+            return {
+                _id: request._id,
+                sender: request.sender,
+                status: request.status,
+                createdAt: request.createdAt,
+                timeAgo
+            };
+        });
+        
+        res.json(requestsWithTimeAgo);
+    } catch (error) {
+        console.error('Error getting friend requests:', error);
+        res.status(500).json({ error: 'Failed to get friend requests', details: error.message });
+    }
+});
+
+// Respond to friend request
+app.post('/api/friend-request-response', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { requestId, action } = req.body;
+        
+        if (!requestId || !action) {
+            return res.status(400).json({ error: 'Request ID and action are required' });
+        }
+        
+        if (action !== 'accept' && action !== 'reject') {
+            return res.status(400).json({ error: 'Action must be either "accept" or "reject"' });
+        }
+        
+        // Find the friend request
+        const request = await FriendRequest.findById(requestId);
+        if (!request) {
+            return res.status(404).json({ error: 'Friend request not found' });
+        }
+        
+        if (action === 'accept') {
+            // Add each user to the other's connections array
+            await User.findByIdAndUpdate(
+                request.sender,
+                { $addToSet: { connections: request.receiver } }
+            );
+            
+            await User.findByIdAndUpdate(
+                request.receiver,
+                { $addToSet: { connections: request.sender } }
+            );
+            
+            // Update request status
+            request.status = 'accepted';
+            await request.save();
+        } else {
+            // If rejected, just update the status
+            request.status = 'rejected';
+            await request.save();
+        }
+        
+        res.json({ 
+            success: true, 
+            message: `Friend request ${action === 'accept' ? 'accepted' : 'rejected'} successfully`
+        });
+    } catch (error) {
+        console.error(`Error ${req.body.action}ing friend request:`, error);
+        res.status(500).json({ 
+            error: `Failed to ${req.body.action} friend request`, 
+            details: error.message 
+        });
+    }
+});
+
+// Add this endpoint before the error handlers and catch-all routes
+app.get('/api/debug', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API is working',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Serve static files
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -357,6 +676,7 @@ app.get('/*.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
+<<<<<<< HEAD
 // Get user by email
 apiRouter.get('/user-by-email', async (req, res) => {
   try {
@@ -448,6 +768,11 @@ app.use('/api/*', (req, res) => {
     message: 'API endpoint not found',
     path: req.path
   });
+=======
+// Catch-all route SHOULD BE LAST
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
 });
 
 // Add this before your routes
@@ -457,6 +782,7 @@ app.use((req, res, next) => {
   next();
 });
 
+<<<<<<< HEAD
 // Add this after your routes
 app.use((req, res, next) => {
   res.status(404).json({ error: 'Not Found', path: req.path });
@@ -629,4 +955,36 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Export for production
+=======
+// Add this to handle 404s
+app.use((req, res) => {
+    res.status(404).json({
+        status: 'error',
+        message: 'Not Found',
+        path: req.path
+    });
+});
+
+// Add this after the connectToDatabase function to test the connection
+app.get('/api/test-db', async (req, res) => {
+    try {
+        await connectToDatabase();
+        // Try a simple query
+        const count = await User.countDocuments();
+        res.json({
+            success: true,
+            message: 'Database connection successful',
+            userCount: count
+        });
+    } catch (error) {
+        console.error('Database test error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Just keep the export
+>>>>>>> f1c7a2d670be00e08c87a2175a2dbe23ef088f07
 module.exports = app; 
